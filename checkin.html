@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1a2744">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Acesso ao Condomínio</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #f4f3ef; font-family: -apple-system, 'Helvetica Neue', sans-serif; }
+
+  .screen { display: none; flex-direction: column; min-height: 100vh; padding: 0; }
+  .screen.active { display: flex; }
+
+  /* Header */
+  .header {
+    background: #1a2744;
+    color: #fff;
+    padding: 52px 24px 28px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .header-label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.55; font-weight: 500; }
+  .header-title { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
+  .header-sub { font-size: 14px; opacity: 0.65; margin-top: 2px; }
+
+  /* Body */
+  .body { flex: 1; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* Cards */
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    border: 0.5px solid rgba(0,0,0,0.08);
+    padding: 18px 20px;
+  }
+  .card-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #888; font-weight: 500; margin-bottom: 8px; }
+
+  /* Termo */
+  .termo-text {
+    font-size: 14px;
+    line-height: 1.65;
+    color: #444;
+  }
+
+  /* Status badge */
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+  }
+  .status-badge.waiting { background: #f0f0ee; color: #888; }
+  .status-badge.active { background: #eaf3de; color: #3b6d11; }
+  .status-badge.ended { background: #faeeda; color: #854f0b; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .dot-waiting { background: #bbb; }
+  .dot-active { background: #639922; animation: pulse 2s infinite; }
+  .dot-ended { background: #ba7517; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* Stats */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-item { background: #f8f7f4; border-radius: 10px; padding: 12px 14px; }
+  .stat-label { font-size: 11px; color: #999; margin-bottom: 4px; }
+  .stat-value { font-size: 20px; font-weight: 600; color: #1a2744; letter-spacing: -0.5px; }
+  .stat-unit { font-size: 11px; color: #aaa; font-weight: 400; }
+
+  /* Buttons */
+  .btn {
+    width: 100%; padding: 16px;
+    border: none; border-radius: 12px;
+    font-size: 16px; font-weight: 600;
+    cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+    letter-spacing: -0.1px;
+  }
+  .btn:active { transform: scale(0.98); opacity: 0.85; }
+  .btn-primary { background: #1a2744; color: #fff; }
+  .btn-danger { background: #e24b4a; color: #fff; }
+  .btn-disabled { background: #e0dfd9; color: #aaa; pointer-events: none; }
+
+  /* Checkbox */
+  .checkbox-row { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; }
+  .checkbox-row input[type=checkbox] { width: 20px; height: 20px; margin-top: 1px; flex-shrink: 0; accent-color: #1a2744; cursor: pointer; }
+  .checkbox-label { font-size: 14px; color: #555; line-height: 1.5; }
+
+  /* Error */
+  .error-msg { background: #fcebeb; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #a32d2d; display: none; }
+
+  /* Timeline */
+  .timeline-item { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-bottom: 0.5px solid #f0efeb; }
+  .timeline-item:last-child { border-bottom: none; }
+  .timeline-icon { width: 30px; height: 30px; border-radius: 50%; background: #f4f3ef; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px; }
+  .timeline-text { flex: 1; }
+  .timeline-title { font-size: 14px; font-weight: 500; color: #1a2744; }
+  .timeline-time { font-size: 12px; color: #aaa; margin-top: 1px; }
+
+  /* Encerrado */
+  .encerrado-icon { width: 64px; height: 64px; border-radius: 50%; background: #eaf3de; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+  .encerrado-icon svg { width: 32px; height: 32px; }
+
+  /* Loader */
+  .loader { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; margin-left: 8px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- TELA 1: Check-in -->
+<div id="screen-checkin" class="screen active">
+  <div class="header">
+    <span class="header-label">Acesso ao condomínio</span>
+    <span class="header-title">Autorização de entrada</span>
+    <span class="header-sub" id="checkin-token-label">Carregando...</span>
+  </div>
+  <div class="body">
+    <div class="card">
+      <div class="card-label">Por que precisamos da sua localização?</div>
+      <p class="termo-text">
+        Para garantir a segurança do condomínio, registramos seu trajeto enquanto você estiver nas dependências. Os dados são usados exclusivamente para fins de segurança e são descartados após sua saída.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Termo de consentimento</div>
+      <label class="checkbox-row">
+        <input type="checkbox" id="termo-check" onchange="toggleBtn()">
+        <span class="checkbox-label">Autorizo o uso da minha localização durante minha permanência no condomínio para fins de segurança.</span>
+      </label>
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <button class="btn btn-disabled" id="btn-iniciar" onclick="iniciarAcesso()">
+      Iniciar acesso
+    </button>
+
+    <p style="font-size: 12px; color: #bbb; text-align: center; margin-top: 4px;">
+      Seus dados são tratados conforme a LGPD
+    </p>
+  </div>
+</div>
+
+<!-- TELA 2: Rastreamento ativo -->
+<div id="screen-ativo" class="screen">
+  <div class="header">
+    <span class="header-label">Acesso autorizado</span>
+    <span class="header-title">Você está dentro</span>
+    <span class="header-sub" id="ativo-inicio">Iniciado às --:--</span>
+  </div>
+  <div class="body">
+    <div class="card" style="display:flex; align-items:center; justify-content:space-between;">
+      <span style="font-size:14px; color:#666; font-weight:500;">Status da sessão</span>
+      <span class="status-badge active" id="status-badge">
+        <span class="status-dot dot-active"></span> Ativo
+      </span>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-label">Tempo dentro</div>
+        <div class="stat-value" id="stat-tempo">00:00</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Velocidade</div>
+        <div class="stat-value" id="stat-vel">0<span class="stat-unit"> km/h</span></div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Pontos GPS</div>
+        <div class="stat-value" id="stat-pts">0</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Última atualiz.</div>
+        <div class="stat-value" id="stat-upd" style="font-size:14px; padding-top:4px;">--:--:--</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Atividade recente</div>
+      <div id="timeline"></div>
+    </div>
+
+    <div class="error-msg" id="error-gps"></div>
+
+    <div style="flex:1"></div>
+
+    <button class="btn btn-danger" onclick="confirmarEncerramento()">
+      Encerrar visita
+    </button>
+    <p style="font-size: 12px; color: #bbb; text-align: center; margin-top: 8px; margin-bottom: 16px;">
+      Seu rastreamento será encerrado ao sair
+    </p>
+  </div>
+</div>
+
+<!-- TELA 3: Encerrado -->
+<div id="screen-encerrado" class="screen">
+  <div class="header" style="background:#2d3a2e;">
+    <span class="header-label">Visita encerrada</span>
+    <span class="header-title">Obrigado pela visita</span>
+    <span class="header-sub">Seu acesso foi registrado com sucesso</span>
+  </div>
+  <div class="body" style="align-items:center; justify-content:center; text-align:center;">
+    <div class="encerrado-icon">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="14" stroke="#639922" stroke-width="2"/>
+        <polyline points="10,17 14,21 22,13" stroke="#639922" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h2 style="font-size:20px; font-weight:600; color:#1a2744; margin-bottom:8px;">Sessão encerrada</h2>
+    <p style="font-size:14px; color:#888; margin-bottom:28px;">Rastreamento finalizado. Você pode fechar esta página.</p>
+
+    <div class="card" style="text-align:left; width:100%;">
+      <div class="card-label">Resumo da visita</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:4px;">
+        <div>
+          <div style="font-size:12px; color:#aaa;">Início</div>
+          <div style="font-size:15px; font-weight:500; color:#1a2744;" id="res-inicio">--</div>
+        </div>
+        <div>
+          <div style="font-size:12px; color:#aaa;">Término</div>
+          <div style="font-size:15px; font-weight:500; color:#1a2744;" id="res-fim">--</div>
+        </div>
+        <div>
+          <div style="font-size:12px; color:#aaa;">Duração</div>
+          <div style="font-size:15px; font-weight:500; color:#1a2744;" id="res-duracao">--</div>
+        </div>
+        <div>
+          <div style="font-size:12px; color:#aaa;">Pontos registrados</div>
+          <div style="font-size:15px; font-weight:500; color:#1a2744;" id="res-pts">--</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://xijwxqyvxoyhjekhkrfm.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_o-FGHOuSygRdquiMZZ922g_WSDk_B3Z';
+
+const headers = {
+  'Content-Type': 'application/json',
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`
+};
+
+const api = (path, opts = {}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+  headers: { ...headers, ...(opts.extraHeaders || {}) },
+  ...opts
+});
+
+// Estado
+let token = null;
+let sessionId = null;
+let watchId = null;
+let trackInterval = null;
+let timerInterval = null;
+let sessionStart = null;
+let lastPosition = null;
+let lastTimestamp = null;
+let pontos = 0;
+let timelineItems = [];
+
+// Token da URL
+function getToken() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('token');
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function toggleBtn() {
+  const checked = document.getElementById('termo-check').checked;
+  const btn = document.getElementById('btn-iniciar');
+  btn.className = checked ? 'btn btn-primary' : 'btn btn-disabled';
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function hideError(id) {
+  document.getElementById(id).style.display = 'none';
+}
+
+function formatTime(date) {
+  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatTimeHMS(date) {
+  return date.toLocaleTimeString('pt-BR');
+}
+
+function calcDuration(start, end) {
+  const diff = Math.floor((end - start) / 1000);
+  const h = Math.floor(diff / 3600);
+  const m = Math.floor((diff % 3600) / 60);
+  const s = diff % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m ${s}s`;
+}
+
+function calcSpeed(pos1, time1, pos2, time2) {
+  const R = 6371000;
+  const lat1 = pos1.latitude * Math.PI / 180;
+  const lat2 = pos2.latitude * Math.PI / 180;
+  const dLat = (pos2.latitude - pos1.latitude) * Math.PI / 180;
+  const dLon = (pos2.longitude - pos1.longitude) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
+  const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const dt = (time2 - time1) / 1000;
+  if (dt === 0) return 0;
+  return (d / dt) * 3.6;
+}
+
+function addTimeline(icon, title, time) {
+  timelineItems.unshift({ icon, title, time });
+  if (timelineItems.length > 5) timelineItems.pop();
+  const el = document.getElementById('timeline');
+  el.innerHTML = timelineItems.map(item => `
+    <div class="timeline-item">
+      <div class="timeline-icon">${item.icon}</div>
+      <div class="timeline-text">
+        <div class="timeline-title">${item.title}</div>
+        <div class="timeline-time">${item.time}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function iniciarAcesso() {
+  const btn = document.getElementById('btn-iniciar');
+  btn.innerHTML = 'Aguardando GPS... <span class="loader"></span>';
+  btn.className = 'btn btn-disabled';
+  hideError('error-msg');
+
+  if (!navigator.geolocation) {
+    showError('error-msg', 'Seu navegador não suporta geolocalização. Tente no Chrome ou Safari.');
+    btn.innerHTML = 'Iniciar acesso';
+    btn.className = 'btn btn-primary';
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    try {
+      // Cria sessão no Supabase
+      const resp = await api('sessions', {
+        method: 'POST',
+        extraHeaders: { 'Prefer': 'return=representation' },
+        body: JSON.stringify({
+          token,
+          status: 'active',
+          latitude_start: pos.coords.latitude,
+          longitude_start: pos.coords.longitude
+        })
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.message || 'Erro ao criar sessão');
+      }
+
+      const data = await resp.json();
+      sessionId = data[0].id;
+      sessionStart = new Date();
+
+      // Envia primeiro ponto
+      await sendLocation(pos.coords.latitude, pos.coords.longitude, 0, pos.coords.timestamp || Date.now());
+      lastPosition = pos.coords;
+      lastTimestamp = Date.now();
+
+      showScreen('screen-ativo');
+      document.getElementById('ativo-inicio').textContent = `Iniciado às ${formatTime(sessionStart)}`;
+      addTimeline('✓', 'Check-in realizado', formatTimeHMS(sessionStart));
+
+      iniciarRastreamento();
+
+    } catch (e) {
+      showError('error-msg', `Erro: ${e.message}`);
+      btn.innerHTML = 'Iniciar acesso';
+      btn.className = 'btn btn-primary';
+    }
+  }, (err) => {
+    let msg = 'Não foi possível obter sua localização. ';
+    if (err.code === 1) msg += 'Permissão negada. Verifique as configurações do seu celular.';
+    else if (err.code === 2) msg += 'Sinal GPS indisponível. Tente em local aberto.';
+    else msg += 'Verifique se o GPS está ativado.';
+    showError('error-msg', msg);
+    btn.innerHTML = 'Iniciar acesso';
+    btn.className = 'btn btn-primary';
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+}
+
+async function sendLocation(lat, lng, speed, ts) {
+  try {
+    await api('locations', {
+      method: 'POST',
+      body: JSON.stringify({ session_id: sessionId, latitude: lat, longitude: lng, speed, timestamp: new Date(ts).toISOString() })
+    });
+    pontos++;
+    document.getElementById('stat-pts').textContent = pontos;
+    document.getElementById('stat-upd').textContent = new Date().toLocaleTimeString('pt-BR');
+    hideError('error-gps');
+  } catch(e) {
+    showError('error-gps', 'Falha ao enviar localização. Tentando novamente...');
+  }
+}
+
+function iniciarRastreamento() {
+  // Timer de duração
+  timerInterval = setInterval(() => {
+    if (!sessionStart) return;
+    const diff = Math.floor((Date.now() - sessionStart) / 1000);
+    const m = Math.floor(diff / 60).toString().padStart(2, '0');
+    const s = (diff % 60).toString().padStart(2, '0');
+    document.getElementById('stat-tempo').textContent = `${m}:${s}`;
+  }, 1000);
+
+  // Rastreamento a cada 5s
+  trackInterval = setInterval(() => {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const now = Date.now();
+      let speed = 0;
+      if (lastPosition && lastTimestamp) {
+        speed = calcSpeed(lastPosition, lastTimestamp, pos.coords, now);
+        speed = Math.min(speed, 200);
+      }
+      document.getElementById('stat-vel').innerHTML = `${Math.round(speed)}<span class="stat-unit"> km/h</span>`;
+
+      if (speed > 30) {
+        addTimeline('⚡', `Velocidade elevada: ${Math.round(speed)} km/h`, new Date().toLocaleTimeString('pt-BR'));
+      } else {
+        addTimeline('📍', 'Posição atualizada', new Date().toLocaleTimeString('pt-BR'));
+      }
+
+      sendLocation(pos.coords.latitude, pos.coords.longitude, speed, now);
+      lastPosition = pos.coords;
+      lastTimestamp = now;
+    }, (e) => {
+      showError('error-gps', 'GPS temporariamente indisponível...');
+    }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 });
+  }, 5000);
+}
+
+async function confirmarEncerramento() {
+  if (!confirm('Confirma o encerramento da visita?')) return;
+  await encerrar();
+}
+
+async function encerrar() {
+  clearInterval(trackInterval);
+  clearInterval(timerInterval);
+  if (watchId) navigator.geolocation.clearWatch(watchId);
+
+  const fim = new Date();
+
+  try {
+    await api(`sessions?id=eq.${sessionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'finished', ended_at: fim.toISOString() })
+    });
+  } catch(e) {}
+
+  // Resumo
+  document.getElementById('res-inicio').textContent = formatTime(sessionStart);
+  document.getElementById('res-fim').textContent = formatTime(fim);
+  document.getElementById('res-duracao').textContent = calcDuration(sessionStart, fim);
+  document.getElementById('res-pts').textContent = pontos;
+
+  showScreen('screen-encerrado');
+}
+
+// Init
+window.onload = () => {
+  token = getToken();
+  if (!token) {
+    token = 'DEMO-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+    const url = new URL(window.location.href);
+    url.searchParams.set('token', token);
+    window.history.replaceState({}, '', url);
+  }
+  document.getElementById('checkin-token-label').textContent = `Token: ${token}`;
+};
+</script>
+</body>
+</html>

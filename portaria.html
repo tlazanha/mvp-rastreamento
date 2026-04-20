@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portaria — Painel de Controle</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #f4f3ef; font-family: -apple-system, 'Helvetica Neue', sans-serif; color: #1a2744; }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    background: #1a2744;
+    color: #fff;
+    display: flex; flex-direction: column;
+    padding: 0;
+    position: fixed; top: 0; left: 0; bottom: 0; width: 280px;
+    overflow-y: auto;
+  }
+  .sidebar-header { padding: 32px 24px 24px; border-bottom: 0.5px solid rgba(255,255,255,0.1); }
+  .sidebar-logo { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.45; margin-bottom: 6px; }
+  .sidebar-title { font-size: 18px; font-weight: 600; }
+  .sidebar-sub { font-size: 12px; opacity: 0.5; margin-top: 2px; }
+
+  .sidebar-section { padding: 20px 24px 12px; }
+  .sidebar-section-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.4; margin-bottom: 12px; }
+
+  .metric { margin-bottom: 14px; }
+  .metric-value { font-size: 28px; font-weight: 600; letter-spacing: -1px; }
+  .metric-label { font-size: 12px; opacity: 0.5; margin-top: 1px; }
+  .metric-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .dot-green { background: #639922; animation: pulse 2s infinite; }
+  .dot-gray { background: #888; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .sidebar-divider { height: 0.5px; background: rgba(255,255,255,0.08); margin: 0 24px; }
+
+  /* Gerar link */
+  .link-form { padding: 20px 24px; }
+  .link-form label { font-size: 11px; letter-spacing: 0.08em; opacity: 0.5; text-transform: uppercase; display: block; margin-bottom: 8px; }
+  .link-form input {
+    width: 100%; padding: 10px 12px;
+    background: rgba(255,255,255,0.06);
+    border: 0.5px solid rgba(255,255,255,0.15);
+    border-radius: 8px; color: #fff; font-size: 14px;
+    outline: none; margin-bottom: 8px;
+  }
+  .link-form input::placeholder { opacity: 0.35; }
+  .link-form input:focus { border-color: rgba(255,255,255,0.4); }
+  .btn-gerar {
+    width: 100%; padding: 10px; border: none;
+    background: rgba(255,255,255,0.12); color: #fff;
+    border-radius: 8px; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .btn-gerar:hover { background: rgba(255,255,255,0.2); }
+  .link-result {
+    margin-top: 10px; padding: 10px 12px;
+    background: rgba(255,255,255,0.05);
+    border: 0.5px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    font-size: 11px; color: rgba(255,255,255,0.6);
+    word-break: break-all; display: none;
+  }
+  .btn-copiar {
+    width: 100%; margin-top: 6px; padding: 8px;
+    background: #639922; color: #fff; border: none;
+    border-radius: 8px; font-size: 13px; font-weight: 500;
+    cursor: pointer; display: none;
+  }
+  .btn-copiar:hover { background: #527e1b; }
+
+  .sidebar-footer { margin-top: auto; padding: 16px 24px; font-size: 11px; opacity: 0.3; }
+
+  /* Main */
+  .main { margin-left: 280px; padding: 32px; }
+  .main-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .main-title { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
+  .main-sub { font-size: 13px; color: #999; margin-top: 2px; }
+
+  .refresh-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: #888; padding: 6px 12px;
+    background: #fff; border-radius: 20px;
+    border: 0.5px solid rgba(0,0,0,0.08);
+  }
+  .refresh-dot { width: 6px; height: 6px; border-radius: 50%; background: #639922; animation: pulse 2s infinite; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; margin-bottom: 20px; background: #ebe9e4; padding: 3px; border-radius: 10px; width: fit-content; }
+  .tab { padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; color: #888; transition: all 0.15s; border: none; background: none; }
+  .tab.active { background: #fff; color: #1a2744; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+  /* Sessions table */
+  .sessions-list { display: flex; flex-direction: column; gap: 10px; }
+  .session-card {
+    background: #fff; border-radius: 12px;
+    border: 0.5px solid rgba(0,0,0,0.08);
+    padding: 16px 20px;
+    display: grid; grid-template-columns: auto 1fr auto auto;
+    gap: 16px; align-items: center;
+    transition: box-shadow 0.15s;
+  }
+  .session-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .session-card.finished { opacity: 0.6; }
+
+  .session-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600;
+  }
+  .avatar-active { background: #eaf3de; color: #3b6d11; }
+  .avatar-finished { background: #f0f0ee; color: #888; }
+
+  .session-info {}
+  .session-token { font-size: 14px; font-weight: 600; color: #1a2744; }
+  .session-meta { font-size: 12px; color: #aaa; margin-top: 2px; }
+
+  .session-stats { text-align: right; }
+  .session-pts { font-size: 13px; font-weight: 500; color: #1a2744; }
+  .session-speed { font-size: 11px; color: #aaa; margin-top: 2px; }
+
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .pill-active { background: #eaf3de; color: #3b6d11; }
+  .pill-finished { background: #f0f0ee; color: #888; }
+  .pill-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .pill-dot-active { background: #639922; animation: pulse 2s infinite; }
+  .pill-dot-finished { background: #bbb; }
+
+  /* Detail panel */
+  .detail-panel { background: #fff; border-radius: 14px; border: 0.5px solid rgba(0,0,0,0.08); padding: 24px; display: none; }
+  .detail-panel.open { display: block; }
+  .detail-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .btn-close { background: #f4f3ef; border: none; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; color: #888; }
+
+  .locations-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .locations-table th { text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #aaa; font-weight: 500; border-bottom: 0.5px solid #f0efeb; }
+  .locations-table td { padding: 8px 10px; border-bottom: 0.5px solid #f8f7f4; color: #444; }
+  .locations-table tr:last-child td { border-bottom: none; }
+  .speed-high { color: #a32d2d; font-weight: 600; }
+
+  /* Empty state */
+  .empty-state { text-align: center; padding: 60px 20px; color: #bbb; }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-text { font-size: 15px; }
+
+  /* Loading */
+  .loading { text-align: center; padding: 40px; color: #bbb; font-size: 14px; }
+  .loader { width: 24px; height: 24px; border: 2px solid #e8e7e2; border-top-color: #1a2744; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; margin-bottom: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { position: static; width: 100%; }
+    .main { margin-left: 0; padding: 16px; }
+    .session-card { grid-template-columns: auto 1fr auto; }
+    .session-stats { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">Sistema de Acesso</div>
+      <div class="sidebar-title">Portaria</div>
+      <div class="sidebar-sub" id="update-time">Atualizando...</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Visão geral</div>
+      <div class="metric">
+        <div class="metric-value" id="total-ativo">
+          <span class="metric-dot dot-green"></span><span id="cnt-ativo">0</span>
+        </div>
+        <div class="metric-label">Prestadores ativos</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="cnt-hoje">0</div>
+        <div class="metric-label">Visitas hoje</div>
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="link-form">
+      <label>Gerar link de acesso</label>
+      <input type="text" id="input-nome" placeholder="Nome ou serviço (opcional)">
+      <button class="btn-gerar" onclick="gerarLink()">Gerar link</button>
+      <div class="link-result" id="link-result"></div>
+      <button class="btn-copiar" id="btn-copiar" onclick="copiarLink()">Copiar link</button>
+    </div>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-footer">Atualização automática a cada 5s</div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="main-header">
+      <div>
+        <div class="main-title">Sessões</div>
+        <div class="main-sub">Monitoramento em tempo real</div>
+      </div>
+      <div class="refresh-badge">
+        <span class="refresh-dot"></span>
+        Ao vivo
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('ativas')">Ativas</button>
+      <button class="tab" onclick="switchTab('historico')">Histórico hoje</button>
+    </div>
+
+    <div id="tab-ativas">
+      <div class="sessions-list" id="list-ativas">
+        <div class="loading"><div class="loader"></div><br>Carregando...</div>
+      </div>
+    </div>
+    <div id="tab-historico" style="display:none">
+      <div class="sessions-list" id="list-historico">
+        <div class="loading"><div class="loader"></div><br>Carregando...</div>
+      </div>
+    </div>
+
+    <div class="detail-panel" id="detail-panel">
+      <div class="detail-title">
+        <span id="detail-title-text">Detalhes da sessão</span>
+        <button class="btn-close" onclick="closeDetail()">Fechar</button>
+      </div>
+      <div id="detail-content"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://xijwxqyvxoyhjekhkrfm.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_o-FGHOuSygRdquiMZZ922g_WSDk_B3Z';
+const CHECKIN_URL = window.location.origin + '/checkin.html';
+
+const h = {
+  'Content-Type': 'application/json',
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`
+};
+
+const api = (path, opts = {}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: { ...h, ...(opts.extraHeaders||{}) }, ...opts });
+
+let currentTab = 'ativas';
+let generatedLink = '';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && tab === 'ativas') || (i === 1 && tab === 'historico'));
+  });
+  document.getElementById('tab-ativas').style.display = tab === 'ativas' ? 'block' : 'none';
+  document.getElementById('tab-historico').style.display = tab === 'historico' ? 'block' : 'none';
+  closeDetail();
+}
+
+function gerarLink() {
+  const nome = document.getElementById('input-nome').value.trim();
+  const token = (nome ? nome.replace(/\s+/g,'-').toUpperCase().slice(0,8) : '') + Math.random().toString(36).substr(2,5).toUpperCase();
+  generatedLink = `${CHECKIN_URL}?token=${token}`;
+  const el = document.getElementById('link-result');
+  el.textContent = generatedLink;
+  el.style.display = 'block';
+  document.getElementById('btn-copiar').style.display = 'block';
+}
+
+async function copiarLink() {
+  try {
+    await navigator.clipboard.writeText(generatedLink);
+    document.getElementById('btn-copiar').textContent = '✓ Copiado!';
+    setTimeout(() => { document.getElementById('btn-copiar').textContent = 'Copiar link'; }, 2000);
+  } catch(e) {
+    prompt('Copie o link:', generatedLink);
+  }
+}
+
+function formatTime(iso) {
+  if (!iso) return '--';
+  return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function calcDuration(start, end) {
+  const s = Math.floor((new Date(end || Date.now()) - new Date(start)) / 1000);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  if (h > 0) return `${h}h ${m % 60}m`;
+  return `${m}m ${s % 60}s`;
+}
+
+function getInitials(token) {
+  return token.slice(0, 2).toUpperCase();
+}
+
+async function loadSessions() {
+  try {
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    // Ativas
+    const ra = await api('sessions?status=eq.active&order=created_at.desc&select=*');
+    const ativas = await ra.json();
+
+    // Histórico hoje (encerradas)
+    const rh = await api(`sessions?status=eq.finished&created_at=gte.${today.toISOString()}&order=created_at.desc&select=*`);
+    const historico = await rh.json();
+
+    // Stats
+    document.getElementById('cnt-ativo').textContent = Array.isArray(ativas) ? ativas.length : 0;
+    const total = (Array.isArray(ativas) ? ativas.length : 0) + (Array.isArray(historico) ? historico.length : 0);
+    document.getElementById('cnt-hoje').textContent = total;
+    document.getElementById('update-time').textContent = `Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;
+
+    renderList('list-ativas', Array.isArray(ativas) ? ativas : [], true);
+    renderList('list-historico', Array.isArray(historico) ? historico : [], false);
+
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+async function getLastLocation(sessionId) {
+  try {
+    const r = await api(`locations?session_id=eq.${sessionId}&order=timestamp.desc&limit=1`);
+    const d = await r.json();
+    return Array.isArray(d) && d.length ? d[0] : null;
+  } catch { return null; }
+}
+
+function renderList(containerId, sessions, isActive) {
+  const el = document.getElementById(containerId);
+  if (!sessions.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">${isActive ? '🟢' : '📋'}</div><div class="empty-text">${isActive ? 'Nenhum prestador ativo no momento' : 'Nenhuma visita encerrada hoje'}</div></div>`;
+    return;
+  }
+  el.innerHTML = sessions.map(s => `
+    <div class="session-card ${s.status === 'finished' ? 'finished' : ''}" onclick="viewDetail('${s.id}', '${s.token}')">
+      <div class="session-avatar ${s.status === 'active' ? 'avatar-active' : 'avatar-finished'}">${getInitials(s.token)}</div>
+      <div class="session-info">
+        <div class="session-token">${s.token}</div>
+        <div class="session-meta">
+          Entrada: ${formatTime(s.created_at)}
+          ${s.status === 'finished' ? ` · Saída: ${formatTime(s.ended_at)} · ${calcDuration(s.created_at, s.ended_at)}` : ` · ${calcDuration(s.created_at, null)} em andamento`}
+        </div>
+      </div>
+      <div class="session-stats">
+        <div class="session-pts" id="pts-${s.id}">-- pts</div>
+        <div class="session-speed" id="spd-${s.id}">-- km/h</div>
+      </div>
+      <div class="status-pill ${s.status === 'active' ? 'pill-active' : 'pill-finished'}">
+        <span class="pill-dot ${s.status === 'active' ? 'pill-dot-active' : 'pill-dot-finished'}"></span>
+        ${s.status === 'active' ? 'Ativo' : 'Encerrado'}
+      </div>
+    </div>
+  `).join('');
+
+  // Carrega stats de localização async
+  sessions.forEach(async s => {
+    const loc = await getLastLocation(s.id);
+    if (loc) {
+      const ptsEl = document.getElementById(`pts-${s.id}`);
+      const spdEl = document.getElementById(`spd-${s.id}`);
+      // count
+      const rc = await api(`locations?session_id=eq.${s.id}&select=id`);
+      const locs = await rc.json();
+      if (ptsEl) ptsEl.textContent = `${Array.isArray(locs) ? locs.length : '--'} pts`;
+      if (spdEl) spdEl.textContent = `${loc.speed ? Math.round(loc.speed) : 0} km/h`;
+    }
+  });
+}
+
+async function viewDetail(id, token) {
+  document.getElementById('detail-title-text').textContent = `Trajeto — ${token}`;
+  document.getElementById('detail-content').innerHTML = '<div class="loading"><div class="loader"></div><br>Carregando pontos...</div>';
+  document.getElementById('detail-panel').classList.add('open');
+  document.getElementById('detail-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  try {
+    const r = await api(`locations?session_id=eq.${id}&order=timestamp.asc`);
+    const locs = await r.json();
+
+    if (!Array.isArray(locs) || !locs.length) {
+      document.getElementById('detail-content').innerHTML = '<p style="color:#aaa;font-size:14px;">Nenhum ponto de localização registrado.</p>';
+      return;
+    }
+
+    document.getElementById('detail-content').innerHTML = `
+      <p style="font-size:13px;color:#aaa;margin-bottom:12px;">${locs.length} pontos registrados</p>
+      <div style="overflow-x:auto;">
+        <table class="locations-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Hora</th>
+              <th>Latitude</th>
+              <th>Longitude</th>
+              <th>Velocidade</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${locs.map((l, i) => `
+              <tr>
+                <td style="color:#bbb;">${i + 1}</td>
+                <td>${new Date(l.timestamp).toLocaleTimeString('pt-BR')}</td>
+                <td style="font-family:monospace;">${Number(l.latitude).toFixed(6)}</td>
+                <td style="font-family:monospace;">${Number(l.longitude).toFixed(6)}</td>
+                <td class="${l.speed > 30 ? 'speed-high' : ''}">${Math.round(l.speed || 0)} km/h ${l.speed > 30 ? '⚡' : ''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('detail-content').innerHTML = '<p style="color:#a32d2d;font-size:14px;">Erro ao carregar dados.</p>';
+  }
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').classList.remove('open');
+}
+
+// Init
+loadSessions();
+setInterval(loadSessions, 5000);
+</script>
+</body>
+</html>
