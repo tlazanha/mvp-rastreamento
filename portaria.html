@@ -190,7 +190,7 @@
   .custom-popup-row { font-size: 11.5px; color: var(--text-2); font-family: var(--mono); margin-top: 2px; }
   .custom-popup-row span { font-weight: 600; color: var(--text); }
 
-  /* Marcador customizado */
+  /* Marcador customizado — ativo */
   .marker-pin {
     width: 32px; height: 32px; border-radius: 50% 50% 50% 0;
     transform: rotate(-45deg);
@@ -204,6 +204,32 @@
     font-family: 'Plus Jakarta Sans', sans-serif;
     letter-spacing: 0;
   }
+
+  /* Marcadores início/fim do histórico */
+  .marker-endpoint {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2.5px solid #fff;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.25);
+  }
+
+  /* Badge modo histórico no mapa */
+  .map-history-badge {
+    position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+    z-index: 1000; background: var(--navy);
+    border-radius: 20px; padding: 7px 16px;
+    display: none; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.85);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    white-space: nowrap;
+  }
+  .map-history-badge.show { display: flex; }
+  .map-history-badge-token { color: #fff; font-weight: 700; }
+  .map-history-badge-close {
+    background: rgba(255,255,255,0.12); border: none; border-radius: 10px;
+    padding: 2px 8px; color: rgba(255,255,255,0.7); font-size: 11px;
+    cursor: pointer; font-family: var(--sans); font-weight: 600;
+  }
+  .map-history-badge-close:hover { background: rgba(255,255,255,0.2); }
 </style>
 </head>
 <body>
@@ -275,6 +301,13 @@
     <!-- Mapa Leaflet -->
     <div id="map"></div>
 
+    <!-- Badge modo histórico -->
+    <div class="map-history-badge" id="map-history-badge">
+      <span>Trajeto de</span>
+      <span class="map-history-badge-token" id="history-badge-token">—</span>
+      <button class="map-history-badge-close" onclick="clearHistoryLayer()">Limpar</button>
+    </div>
+
     <!-- Empty state -->
     <div class="map-empty" id="map-empty">
       <div class="map-empty-icon">📍</div>
@@ -332,6 +365,9 @@ let sessionIdx = {};   // sessionId → índice de cor
 let colorCount = 0;
 let selectedId = null;
 let generatedLink = '';
+
+// Camada de histórico (trajeto encerrado sobreposto ao mapa)
+let historyLayer = null;   // L.layerGroup com polyline + marcadores início/fim
 
 // ── Init Leaflet ──
 function initMap() {
@@ -421,9 +457,105 @@ function fitMapToActive(sessions) {
   if (group.getLayers().length) map.fitBounds(group.getBounds().pad(0.3));
 }
 
-// ── Seleção de sessão ──
+// ── Limpa camada de histórico ──
+function clearHistoryLayer() {
+  if (historyLayer) { map.removeLayer(historyLayer); historyLayer = null; }
+  document.getElementById('map-history-badge').classList.remove('show');
+  document.querySelectorAll('.session-card.hist-selected').forEach(c => c.classList.remove('hist-selected','selected'));
+}
+
+// ── Cria ícone de endpoint (início / fim) ──
+function endpointIcon(color) {
+  return L.divIcon({
+    html: `<div class="marker-endpoint" style="background:${color};"></div>`,
+    className: '', iconSize: [14,14], iconAnchor: [7,7],
+  });
+}
+
+// ── Exibe trajeto histórico no mapa ──
+async function selectHistory(session) {
+  clearHistoryLayer();
+  selectedId = session.id;
+
+  document.querySelectorAll('.session-card').forEach(c => c.classList.remove('selected','hist-selected'));
+  const card = document.getElementById(`card-${session.id}`);
+  if (card) card.classList.add('selected','hist-selected');
+
+  // Painel detalhe
+  document.getElementById('detail-token').textContent = session.token;
+  document.getElementById('detail-tempo').textContent = '…';
+  document.getElementById('detail-pts').textContent   = '…';
+  document.getElementById('detail-vel').textContent   = '—';
+  document.getElementById('detail-locations').innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--text-3)">Carregando…</div>';
+  document.getElementById('map-detail').classList.add('open');
+
+  try {
+    const r = await api(`locations?session_id=eq.${session.id}&order=timestamp.asc`);
+    const locs = await r.json();
+
+    if (!Array.isArray(locs) || !locs.length) {
+      document.getElementById('detail-locations').innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--text-3)">Nenhum ponto registrado.</div>';
+      return;
+    }
+
+    // Estatísticas
+    const duracao = calcDuration(session.created_at, session.ended_at);
+    const velMax  = Math.round(Math.max(...locs.map(l => l.speed||0)));
+    document.getElementById('detail-tempo').textContent = duracao;
+    document.getElementById('detail-pts').textContent   = locs.length;
+    document.getElementById('detail-vel').textContent   = `${velMax}`;
+
+    // Troca label "Vel. atual" → "Vel. máx" no histórico
+    const velLabel = document.querySelector('.detail-stat:last-child .detail-stat-label');
+    if (velLabel) velLabel.textContent = 'Vel. máx';
+
+    // Lista de pontos
+    document.getElementById('detail-locations').innerHTML = [...locs].reverse().map((l,i) => {
+      const spd = Math.round(l.speed||0);
+      return `<div class="detail-loc-row">
+        <span class="detail-loc-idx">${locs.length - i}</span>
+        <span class="detail-loc-time">${new Date(l.timestamp).toLocaleTimeString('pt-BR')}</span>
+        <span class="detail-loc-spd ${spd > 30 ? 'spd-high' : 'spd-ok'}">${spd} km/h</span>
+      </div>`;
+    }).join('');
+
+    // ── Desenha no mapa ──
+    const coords  = locs.map(l => [l.latitude, l.longitude]);
+    const first   = coords[0];
+    const last    = coords[coords.length - 1];
+
+    // Polyline cinza tracejada para diferenciar dos ativos
+    const line = L.polyline(coords, {
+      color: '#5f5e5a', weight: 3.5, opacity: 0.7,
+      dashArray: '6 4', lineJoin: 'round',
+    });
+
+    // Marcador de início (verde) e fim (vermelho)
+    const mStart = L.marker(first, { icon: endpointIcon('#059669'), zIndexOffset: 10 })
+      .bindTooltip('Início · ' + formatTime(session.created_at), { permanent:false, direction:'top' });
+    const mEnd   = L.marker(last,  { icon: endpointIcon('#dc2626'), zIndexOffset: 10 })
+      .bindTooltip('Saída · '  + formatTime(session.ended_at),   { permanent:false, direction:'top' });
+
+    historyLayer = L.layerGroup([line, mStart, mEnd]).addTo(map);
+
+    // Zoom no trajeto
+    map.fitBounds(line.getBounds().pad(0.25));
+
+    // Badge
+    document.getElementById('history-badge-token').textContent = session.token;
+    document.getElementById('map-history-badge').classList.add('show');
+
+  } catch(e) {
+    document.getElementById('detail-locations').innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--red)">Erro ao carregar dados.</div>';
+  }
+}
+
+// ── Seleção de sessão ATIVA ──
 async function selectSession(id, token) {
+  // Limpa qualquer histórico exibido
+  clearHistoryLayer();
   selectedId = id;
+
   document.querySelectorAll('.session-card').forEach(c => c.classList.remove('selected'));
   const card = document.getElementById(`card-${id}`);
   if (card) card.classList.add('selected');
@@ -436,6 +568,10 @@ async function selectSession(id, token) {
   document.getElementById('detail-vel').textContent   = '…';
   document.getElementById('detail-locations').innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--text-3)">Carregando…</div>';
   document.getElementById('map-detail').classList.add('open');
+
+  // Restaura label "Vel. atual" (caso tenha sido trocado)
+  const velLabel = document.querySelector('.detail-stat:last-child .detail-stat-label');
+  if (velLabel) velLabel.textContent = 'Vel. atual';
 
   try {
     const r = await api(`locations?session_id=eq.${id}&order=timestamp.asc`);
@@ -455,11 +591,10 @@ async function selectSession(id, token) {
 
     document.getElementById('detail-locations').innerHTML = [...locs].reverse().map((l,i) => {
       const spd = Math.round(l.speed||0);
-      const spdClass = spd > 30 ? 'spd-high' : 'spd-ok';
       return `<div class="detail-loc-row">
         <span class="detail-loc-idx">${locs.length - i}</span>
         <span class="detail-loc-time">${new Date(l.timestamp).toLocaleTimeString('pt-BR')}</span>
-        <span class="detail-loc-spd ${spdClass}">${spd} km/h</span>
+        <span class="detail-loc-spd ${spd > 30 ? 'spd-high' : 'spd-ok'}">${spd} km/h</span>
       </div>`;
     }).join('');
   } catch(e) {
@@ -469,8 +604,12 @@ async function selectSession(id, token) {
 
 function closeDetail() {
   document.getElementById('map-detail').classList.remove('open');
+  clearHistoryLayer();
   selectedId = null;
   document.querySelectorAll('.session-card').forEach(c => c.classList.remove('selected'));
+  // Restaura label
+  const velLabel = document.querySelector('.detail-stat:last-child .detail-stat-label');
+  if (velLabel) velLabel.textContent = 'Vel. atual';
 }
 
 // ── Render sidebar ──
@@ -498,25 +637,29 @@ function renderList(containerId, sessions, isActive) {
   el.innerHTML = sessions.map(s => {
     const color    = sessionIdx[s.id] !== undefined ? colorFor(sessionIdx[s.id]) : '#6c4fcc';
     const initials = s.token.slice(0,2).toUpperCase();
+    const isActive = s.status === 'active';
+    const onclick  = isActive
+      ? `selectSession('${s.id}','${s.token}')`
+      : `selectHistory(${JSON.stringify(s)})`;
     return `
-      <div class="session-card ${s.status==='finished'?'finished':''} ${selectedId===s.id?'selected':''}"
-           id="card-${s.id}" onclick="selectSession('${s.id}','${s.token}')">
-        <div class="session-avatar ${s.status==='active'?'avatar-active':'avatar-finished'}"
-             style="${s.status==='active'?`background:${color}20;color:${color}`:''}">
+      <div class="session-card ${!isActive?'finished':''} ${selectedId===s.id?'selected':''}"
+           id="card-${s.id}" onclick="${onclick}">
+        <div class="session-avatar ${isActive?'avatar-active':'avatar-finished'}"
+             style="${isActive?`background:${color}20;color:${color}`:''}">
           ${initials}
         </div>
         <div class="session-info">
           <div class="session-token">${s.token}</div>
           <div class="session-meta">
             ${formatTime(s.created_at)}
-            ${s.status==='finished'
+            ${!isActive
               ? ` · ${calcDuration(s.created_at, s.ended_at)}`
               : ` · ${calcDuration(s.created_at, null)}`}
           </div>
         </div>
-        <div class="pill ${s.status==='active'?'pill-active':'pill-finished'}">
-          <span class="pill-dot ${s.status==='active'?'pill-dot-active':'pill-dot-finished'}"></span>
-          ${s.status==='active'?'Ativo':'Fim'}
+        <div class="pill ${isActive?'pill-active':'pill-finished'}">
+          <span class="pill-dot ${isActive?'pill-dot-active':'pill-dot-finished'}"></span>
+          ${isActive?'Ativo':'Fim'}
         </div>
       </div>`;
   }).join('');
