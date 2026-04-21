@@ -7,13 +7,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
     --navy:       #17151f;
     --navy-mid:   #221f2e;
-    --navy-light: rgba(255,255,255,0.07);
     --green:      #6c4fcc;
     --green-bg:   #ede8fa;
     --green-text: #4a32a8;
@@ -31,559 +31,178 @@
     --sans:       'Plus Jakarta Sans', sans-serif;
   }
 
-  html, body {
-    height: 100%;
-    background: var(--bg);
-    font-family: var(--sans);
-    color: var(--text);
-    font-size: 14px;
-    -webkit-font-smoothing: antialiased;
-  }
+  html, body { height: 100%; background: var(--bg); font-family: var(--sans); color: var(--text); font-size: 14px; -webkit-font-smoothing: antialiased; overflow: hidden; }
 
-  /* ── Layout ── */
-  .layout {
-    display: grid;
-    grid-template-columns: 288px 1fr;
-    min-height: 100vh;
-  }
+  /* ── Layout: sidebar fixa + main com mapa ── */
+  .layout { display: grid; grid-template-columns: 300px 1fr; height: 100vh; }
 
   /* ── Sidebar ── */
   .sidebar {
-    background: var(--navy);
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    top: 0; left: 0; bottom: 0;
-    width: 288px;
-    overflow-y: auto;
-    overflow-x: hidden;
+    background: var(--navy); color: #fff;
+    display: flex; flex-direction: column;
+    height: 100vh; overflow: hidden;
   }
 
-  /* scrollbar sidebar */
-  .sidebar::-webkit-scrollbar { width: 4px; }
-  .sidebar::-webkit-scrollbar-track { background: transparent; }
-  .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
-
-  .sidebar-header {
-    padding: 36px 28px 28px;
-    border-bottom: 1px solid rgba(255,255,255,0.07);
-  }
-
+  .sidebar-header { padding: 28px 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.07); flex-shrink: 0; }
   .sidebar-eyebrow {
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.38);
-    font-weight: 600;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: rgba(255,255,255,0.38); font-weight: 600; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 8px;
   }
-  .sidebar-eyebrow::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: rgba(255,255,255,0.1);
-  }
+  .sidebar-eyebrow::after { content:''; flex:1; height:1px; background:rgba(255,255,255,0.1); }
+  .sidebar-brand { font-size: 18px; font-weight: 700; letter-spacing: -0.4px; }
+  .sidebar-time { margin-top: 4px; font-size: 11px; color: rgba(255,255,255,0.35); }
 
-  .sidebar-brand {
-    font-size: 20px;
-    font-weight: 700;
-    letter-spacing: -0.4px;
-    color: #fff;
-  }
+  /* Métricas */
+  .sidebar-metrics { padding: 16px 24px; flex-shrink: 0; }
+  .metric-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .metric-block { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 14px; }
+  .metric-block-label { font-size: 10px; color: rgba(255,255,255,0.38); letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
+  .metric-block-value { font-size: 24px; font-weight: 700; letter-spacing: -1px; display: flex; align-items: center; gap: 5px; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  @keyframes ring { 0%{box-shadow:0 0 0 0 rgba(108,79,204,0.5)} 60%{box-shadow:0 0 0 5px rgba(108,79,204,0)} 100%{box-shadow:0 0 0 0 rgba(108,79,204,0)} }
+  .live-dot { animation: ring 2s infinite; }
 
-  .sidebar-time {
-    margin-top: 6px;
-    font-size: 11.5px;
-    color: rgba(255,255,255,0.38);
-    font-weight: 400;
-  }
+  .sidebar-divider { height: 1px; background: rgba(255,255,255,0.07); margin: 0 24px; flex-shrink: 0; }
 
-  /* Metrics */
-  .sidebar-metrics {
-    padding: 24px 28px 20px;
-  }
-
-  .metric-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 0;
-  }
-
-  .metric-block {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 12px;
-    padding: 14px 16px;
-  }
-
-  .metric-block-label {
-    font-size: 10.5px;
-    color: rgba(255,255,255,0.38);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    font-weight: 600;
-    margin-bottom: 6px;
-  }
-
-  .metric-block-value {
-    font-size: 26px;
-    font-weight: 700;
-    letter-spacing: -1px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .live-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--green);
-    box-shadow: 0 0 0 0 oklch(50% 0.13 145 / 0.5);
-    animation: ring 2s infinite;
-    flex-shrink: 0;
-  }
-  @keyframes ring {
-    0%   { box-shadow: 0 0 0 0 rgba(108, 79, 204, 0.5); }
-    60%  { box-shadow: 0 0 0 5px rgba(108, 79, 204, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(108, 79, 204, 0); }
-  }
-
-  /* Divider */
-  .sidebar-divider {
-    height: 1px;
-    background: rgba(255,255,255,0.07);
-    margin: 0 28px;
-  }
-
-  /* Link generator */
-  .link-section {
-    padding: 22px 28px;
-  }
-
-  .link-section-label {
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.38);
-    font-weight: 600;
-    margin-bottom: 14px;
-  }
-
-  .field-label {
-    font-size: 11.5px;
-    color: rgba(255,255,255,0.5);
-    font-weight: 500;
-    margin-bottom: 6px;
-    display: block;
-  }
-
-  .field-input {
-    width: 100%;
-    padding: 10px 13px;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 9px;
-    color: #fff;
-    font-size: 13.5px;
-    font-family: var(--sans);
-    outline: none;
-    margin-bottom: 10px;
-    transition: border-color 0.15s;
-  }
+  /* Gerador de link */
+  .link-section { padding: 16px 24px; flex-shrink: 0; }
+  .link-section-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.38); font-weight: 600; margin-bottom: 12px; }
+  .field-label { font-size: 11px; color: rgba(255,255,255,0.5); font-weight: 500; margin-bottom: 5px; display: block; }
+  .field-input { width: 100%; padding: 9px 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff; font-size: 13px; font-family: var(--sans); outline: none; margin-bottom: 8px; transition: border-color 0.15s; }
   .field-input::placeholder { color: rgba(255,255,255,0.25); }
-  .field-input:focus { border-color: rgba(255,255,255,0.35); background: rgba(255,255,255,0.09); }
-
-  .btn-gerar {
-    width: 100%;
-    padding: 10px 14px;
-    background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 9px;
-    color: #fff;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: var(--sans);
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
-    letter-spacing: 0.01em;
-  }
-  .btn-gerar:hover { background: rgba(255,255,255,0.17); border-color: rgba(255,255,255,0.25); }
-
-  .link-result {
-    margin-top: 10px;
-    padding: 10px 13px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.09);
-    border-radius: 9px;
-    font-size: 11px;
-    font-family: var(--mono);
-    color: rgba(255,255,255,0.55);
-    word-break: break-all;
-    line-height: 1.5;
-    display: none;
-  }
-
-  .btn-copiar {
-    width: 100%;
-    margin-top: 8px;
-    padding: 10px;
-    background: var(--green);
-    color: #fff;
-    border: none;
-    border-radius: 9px;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: var(--sans);
-    cursor: pointer;
-    display: none;
-    transition: filter 0.15s;
-  }
+  .field-input:focus { border-color: rgba(255,255,255,0.35); }
+  .btn-gerar { width: 100%; padding: 9px 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 13px; font-weight: 600; font-family: var(--sans); cursor: pointer; transition: background 0.15s; }
+  .btn-gerar:hover { background: rgba(255,255,255,0.17); }
+  .link-result { margin-top: 8px; padding: 9px 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); border-radius: 8px; font-size: 11px; font-family: var(--mono); color: rgba(255,255,255,0.5); word-break: break-all; line-height: 1.5; display: none; }
+  .btn-copiar { width: 100%; margin-top: 6px; padding: 9px; background: var(--green); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: var(--sans); cursor: pointer; display: none; transition: filter 0.15s; }
   .btn-copiar:hover { filter: brightness(1.1); }
 
-  .sidebar-footer {
-    margin-top: auto;
-    padding: 16px 28px 24px;
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 11px;
-    color: rgba(255,255,255,0.25);
-  }
-  .footer-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.2); animation: blink 5s infinite; }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  /* Lista de sessões — scrollável */
+  .sessions-section { flex: 1; overflow-y: auto; padding: 0 24px 24px; min-height: 0; }
+  .sessions-section::-webkit-scrollbar { width: 3px; }
+  .sessions-section::-webkit-scrollbar-track { background: transparent; }
+  .sessions-section::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+  .sessions-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.38); font-weight: 600; margin: 16px 0 10px; display: flex; align-items: center; justify-content: space-between; }
+  .tab-count { background: var(--green); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; }
 
-  /* ── Main ── */
-  .main {
-    margin-left: 288px;
-    padding: 36px 36px 48px;
-    min-height: 100vh;
-  }
-
-  .main-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 28px;
-  }
-
-  .main-title-block {}
-  .main-title {
-    font-size: 24px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    color: var(--text);
-  }
-  .main-sub {
-    font-size: 13px;
-    color: var(--text-2);
-    margin-top: 3px;
-    font-weight: 400;
-  }
-
-  .live-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 7px 14px;
-    background: var(--surface);
-    border: 1px solid var(--border-mid);
-    border-radius: 24px;
-    font-size: 12px;
-    color: var(--text-2);
-    font-weight: 500;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  }
-  .live-badge-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--green);
-    animation: ring 2.5s infinite;
-  }
-
-  /* Tabs */
-  .tabs-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
-  }
-
-  .tabs {
-    display: flex;
-    background: rgba(0,0,0,0.05);
-    padding: 3px;
-    border-radius: 11px;
-    gap: 2px;
-  }
-  .tab {
-    padding: 7px 18px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    color: var(--text-2);
-    transition: all 0.15s;
-    border: none;
-    background: none;
-    font-family: var(--sans);
-    letter-spacing: 0.01em;
-  }
-  .tab.active {
-    background: var(--surface);
-    color: var(--text);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05);
-  }
-
-  .tab-count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    font-size: 10px;
-    font-weight: 700;
-    margin-left: 5px;
-    background: var(--navy);
-    color: #fff;
-    vertical-align: middle;
-  }
-
-  /* Session list */
-  .sessions-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
+  /* Cards de sessão na sidebar */
   .session-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 18px 22px;
-    display: grid;
-    grid-template-columns: 44px 1fr auto auto;
-    gap: 16px;
-    align-items: center;
-    cursor: pointer;
-    transition: box-shadow 0.18s, border-color 0.18s, transform 0.12s;
-    position: relative;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 6px;
+    cursor: pointer; transition: background 0.15s, border-color 0.15s;
+    display: flex; align-items: center; gap: 10px;
   }
-  .session-card:hover {
-    box-shadow: 0 4px 16px rgba(0,0,0,0.07);
-    border-color: rgba(0,0,0,0.13);
-    transform: translateY(-1px);
-  }
-  .session-card.finished {
-    opacity: 0.55;
-  }
-  .session-card.finished:hover {
-    opacity: 0.75;
-  }
+  .session-card:hover { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.18); }
+  .session-card.selected { background: rgba(108,79,204,0.2); border-color: rgba(108,79,204,0.5); }
+  .session-card.finished { opacity: 0.45; }
 
-  .session-avatar {
-    width: 44px; height: 44px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    flex-shrink: 0;
-  }
-  .avatar-active {
-    background: var(--green-bg);
-    color: var(--green-text);
-  }
-  .avatar-finished {
-    background: #f1f0ed;
-    color: #9ca3af;
-  }
+  .session-avatar { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .avatar-active { background: var(--green-bg); color: var(--green-text); }
+  .avatar-finished { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.4); }
 
-  .session-info {}
-  .session-token {
-    font-size: 14.5px;
-    font-weight: 700;
-    color: var(--text);
-    letter-spacing: -0.1px;
-  }
-  .session-meta {
-    font-size: 12px;
-    color: var(--text-3);
-    margin-top: 3px;
-    font-weight: 400;
-  }
+  .session-info { flex: 1; min-width: 0; }
+  .session-token { font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .session-meta { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
 
-  .session-stats {
-    text-align: right;
-  }
-  .session-pts {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    font-family: var(--mono);
-  }
-  .session-speed {
-    font-size: 11px;
-    color: var(--text-3);
-    margin-top: 3px;
-    font-family: var(--mono);
-  }
+  .pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; flex-shrink: 0; }
+  .pill-active { background: var(--green-bg); color: var(--green-text); }
+  .pill-finished { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.4); }
+  .pill-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .pill-dot-active { background: var(--green); animation: ring 2s infinite; }
+  .pill-dot-finished { background: rgba(255,255,255,0.3); }
 
-  /* Status pill */
-  .status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 11px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-    text-transform: uppercase;
-  }
-  .pill-active {
-    background: var(--green-bg);
-    color: var(--green-text);
-  }
-  .pill-finished {
-    background: #f1f0ed;
-    color: #9ca3af;
-  }
-  .pill-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-  }
-  .pill-dot-active {
-    background: var(--green);
-    animation: ring 2s infinite;
-  }
-  .pill-dot-finished {
-    background: #d1d5db;
-  }
+  .empty-sidebar { text-align: center; padding: 32px 0; color: rgba(255,255,255,0.25); font-size: 13px; }
 
-  /* Detail panel */
-  .detail-panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 28px;
+  .sidebar-footer { padding: 12px 24px 20px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(255,255,255,0.22); flex-shrink: 0; border-top: 1px solid rgba(255,255,255,0.07); }
+  .footer-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.2); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .footer-dot { animation: blink 5s infinite; }
+
+  /* ── Main: mapa full height ── */
+  .main { position: relative; height: 100vh; }
+
+  #map { width: 100%; height: 100%; }
+
+  /* Painel flutuante de detalhe (sobre o mapa) */
+  .map-detail {
+    position: absolute; bottom: 24px; right: 24px;
+    width: 300px; background: var(--surface);
+    border-radius: 14px; border: 1px solid var(--border-mid);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    z-index: 1000; display: none;
+    overflow: hidden;
+  }
+  .map-detail.open { display: block; }
+
+  .detail-header { padding: 14px 16px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .detail-token { font-size: 14px; font-weight: 700; color: var(--text); }
+  .detail-close { background: #f3f2ef; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--text-2); cursor: pointer; font-family: var(--sans); }
+  .detail-close:hover { background: #e8e6e1; }
+
+  .detail-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; }
+  .detail-stat { padding: 12px 14px; text-align: center; border-right: 1px solid var(--border); }
+  .detail-stat:last-child { border-right: none; }
+  .detail-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); font-weight: 700; margin-bottom: 4px; }
+  .detail-stat-value { font-size: 16px; font-weight: 700; color: var(--text); font-family: var(--mono); letter-spacing: -0.5px; }
+
+  .detail-locations { max-height: 180px; overflow-y: auto; }
+  .detail-locations::-webkit-scrollbar { width: 3px; }
+  .detail-locations::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+  .detail-loc-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 8px 14px; border-top: 1px solid #fafaf8; font-size: 11.5px; }
+  .detail-loc-idx { color: var(--text-3); font-family: var(--mono); font-size: 10px; width: 18px; text-align: right; }
+  .detail-loc-time { color: var(--text-2); font-family: var(--mono); }
+  .detail-loc-spd { font-weight: 600; font-family: var(--mono); }
+  .spd-high { color: var(--red); }
+  .spd-ok   { color: var(--green-text); }
+
+  /* Badge "Ao vivo" no mapa */
+  .map-live-badge {
+    position: absolute; top: 16px; right: 16px; z-index: 1000;
+    background: var(--surface); border: 1px solid var(--border-mid);
+    border-radius: 20px; padding: 6px 12px;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 500; color: var(--text-2);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .map-live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: ring 2.5s infinite; }
+
+  /* Empty state no mapa */
+  .map-empty {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    z-index: 900; background: var(--surface);
+    border-radius: 14px; border: 1px solid var(--border-mid);
+    padding: 28px 32px; text-align: center;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
     display: none;
-    margin-top: 20px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
   }
-  .detail-panel.open { display: block; }
+  .map-empty.show { display: block; }
+  .map-empty-icon { font-size: 28px; margin-bottom: 10px; }
+  .map-empty-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .map-empty-sub { font-size: 12px; color: var(--text-3); }
 
-  .detail-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 18px;
-    border-bottom: 1px solid var(--border);
-  }
-  .detail-title-text {
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: -0.2px;
-  }
-  .btn-close {
-    background: #f3f2ef;
-    border: none;
-    border-radius: 8px;
-    padding: 6px 13px;
-    cursor: pointer;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--text-2);
-    font-family: var(--sans);
-    transition: background 0.15s;
-  }
-  .btn-close:hover { background: #ebe9e4; }
+  /* Leaflet popup customizado */
+  .leaflet-popup-content-wrapper { border-radius: 10px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.12) !important; padding: 0 !important; overflow: hidden; }
+  .leaflet-popup-content { margin: 0 !important; }
+  .leaflet-popup-tip-container { display: none; }
+  .custom-popup { padding: 12px 14px; min-width: 160px; }
+  .custom-popup-token { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; font-family: var(--sans); }
+  .custom-popup-row { font-size: 11.5px; color: var(--text-2); font-family: var(--mono); margin-top: 2px; }
+  .custom-popup-row span { font-weight: 600; color: var(--text); }
 
-  /* Table */
-  .locations-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
+  /* Marcador customizado */
+  .marker-pin {
+    width: 32px; height: 32px; border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    display: flex; align-items: center; justify-content: center;
+    border: 2.5px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
   }
-  .locations-table thead th {
-    text-align: left;
-    padding: 9px 12px;
-    font-size: 10.5px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-3);
-    font-weight: 700;
-    border-bottom: 1px solid var(--border);
-    background: #fafaf8;
-  }
-  .locations-table thead th:first-child { border-radius: 8px 0 0 0; }
-  .locations-table thead th:last-child { border-radius: 0 8px 0 0; }
-  .locations-table tbody td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #fafaf8;
-    color: var(--text-2);
-    font-weight: 400;
-  }
-  .locations-table tbody tr:last-child td { border-bottom: none; }
-  .locations-table tbody tr:hover td { background: #fafaf8; }
-  .coord { font-family: var(--mono); font-size: 12.5px; color: var(--text); }
-  .speed-high { color: var(--red); font-weight: 700; font-family: var(--mono); }
-  .speed-normal { font-family: var(--mono); }
-  .row-num { color: var(--text-3); font-family: var(--mono); font-size: 11.5px; }
-
-  /* Empty state */
-  .empty-state {
-    text-align: center;
-    padding: 64px 20px;
-    color: var(--text-3);
-  }
-  .empty-icon {
-    width: 52px; height: 52px;
-    border-radius: 16px;
-    background: #f1f0ed;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 16px;
-    font-size: 22px;
-  }
-  .empty-title { font-size: 14.5px; font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
-  .empty-desc { font-size: 13px; color: var(--text-3); }
-
-  /* Loading */
-  .loading {
-    text-align: center;
-    padding: 48px 20px;
-    color: var(--text-3);
-    font-size: 13.5px;
-  }
-  .loader {
-    width: 22px; height: 22px;
-    border: 2px solid #e5e3de;
-    border-top-color: var(--navy);
-    border-radius: 50%;
-    animation: spin 0.75s linear infinite;
-    display: inline-block;
-    margin-bottom: 10px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Responsive */
-  @media (max-width: 900px) {
-    .layout { grid-template-columns: 1fr; }
-    .sidebar { position: static; width: 100%; }
-    .main { margin-left: 0; padding: 20px; }
-    .session-card { grid-template-columns: 44px 1fr auto; }
-    .session-stats { display: none; }
+  .marker-pin-inner {
+    transform: rotate(45deg);
+    font-size: 10px; font-weight: 800; color: #fff;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: 0;
   }
 </style>
 </head>
@@ -619,90 +238,355 @@
     <div class="link-section">
       <div class="link-section-label">Gerar link de acesso</div>
       <label class="field-label">Nome ou serviço</label>
-      <input class="field-input" type="text" id="input-nome" placeholder="Ex: Encanador, XPTO Manutenção">
+      <input class="field-input" type="text" id="input-nome" placeholder="Ex: Encanador, XPTO">
       <button class="btn-gerar" onclick="gerarLink()">Gerar link de acesso</button>
       <div class="link-result" id="link-result"></div>
       <button class="btn-copiar" id="btn-copiar" onclick="copiarLink()">Copiar link</button>
     </div>
 
     <div class="sidebar-divider"></div>
+
+    <!-- Lista de sessões ativas -->
+    <div class="sessions-section">
+      <div class="sessions-label">
+        Prestadores ativos
+        <span class="tab-count" id="badge-ativas" style="display:none">0</span>
+      </div>
+      <div id="list-ativas"><div class="empty-sidebar">Carregando…</div></div>
+
+      <div class="sessions-label" style="margin-top:20px;">Histórico hoje</div>
+      <div id="list-historico"><div class="empty-sidebar">Carregando…</div></div>
+    </div>
+
     <div class="sidebar-footer">
       <span class="footer-dot"></span>
       Atualização automática a cada 5s
     </div>
   </nav>
 
-  <!-- ── Main ── -->
+  <!-- ── Main: Mapa ── -->
   <main class="main">
-    <div class="main-header">
-      <div class="main-title-block">
-        <div class="main-title">Sessões</div>
-        <div class="main-sub">Monitoramento em tempo real</div>
-      </div>
-      <div class="live-badge">
-        <span class="live-badge-dot"></span>
-        Ao vivo
-      </div>
+    <!-- Badge ao vivo -->
+    <div class="map-live-badge">
+      <span class="map-live-dot"></span>
+      Ao vivo
     </div>
 
-    <div class="tabs-bar">
-      <div class="tabs">
-        <button class="tab active" onclick="switchTab('ativas')">
-          Ativas <span class="tab-count" id="badge-ativas" style="display:none">0</span>
-        </button>
-        <button class="tab" onclick="switchTab('historico')">Histórico hoje</button>
-      </div>
+    <!-- Mapa Leaflet -->
+    <div id="map"></div>
+
+    <!-- Empty state -->
+    <div class="map-empty" id="map-empty">
+      <div class="map-empty-icon">📍</div>
+      <div class="map-empty-title">Nenhum prestador ativo</div>
+      <div class="map-empty-sub">Os marcadores aparecerão aqui<br>assim que houver check-in</div>
     </div>
 
-    <div id="tab-ativas">
-      <div class="sessions-list" id="list-ativas">
-        <div class="loading"><div class="loader"></div><br>Carregando sessões…</div>
-      </div>
-    </div>
-    <div id="tab-historico" style="display:none">
-      <div class="sessions-list" id="list-historico">
-        <div class="loading"><div class="loader"></div><br>Carregando histórico…</div>
-      </div>
-    </div>
-
-    <div class="detail-panel" id="detail-panel">
+    <!-- Painel de detalhe flutuante -->
+    <div class="map-detail" id="map-detail">
       <div class="detail-header">
-        <span class="detail-title-text" id="detail-title-text">Detalhes da sessão</span>
-        <button class="btn-close" onclick="closeDetail()">Fechar</button>
+        <span class="detail-token" id="detail-token">—</span>
+        <button class="detail-close" onclick="closeDetail()">Fechar</button>
       </div>
-      <div id="detail-content"></div>
+      <div class="detail-stats">
+        <div class="detail-stat">
+          <div class="detail-stat-label">Tempo</div>
+          <div class="detail-stat-value" id="detail-tempo">—</div>
+        </div>
+        <div class="detail-stat">
+          <div class="detail-stat-label">Pontos</div>
+          <div class="detail-stat-value" id="detail-pts">—</div>
+        </div>
+        <div class="detail-stat">
+          <div class="detail-stat-label">Vel. atual</div>
+          <div class="detail-stat-value" id="detail-vel">—</div>
+        </div>
+      </div>
+      <div class="detail-locations" id="detail-locations"></div>
     </div>
   </main>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const SUPABASE_URL = 'https://xijwxqyvxoyhjekhkrfm.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_o-FGHOuSygRdquiMZZ922g_WSDk_B3Z';
-const CHECKIN_URL = window.location.origin + '/checkin.html';
+const CHECKIN_URL  = window.location.origin + '/checkin.html';
 
 const h = {
   'Content-Type': 'application/json',
   'apikey': SUPABASE_KEY,
   'Authorization': `Bearer ${SUPABASE_KEY}`
 };
-const api = (path, opts = {}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: { ...h, ...(opts.extraHeaders||{}) }, ...opts });
+const api = (path, opts={}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers:{ ...h, ...(opts.extraHeaders||{}) }, ...opts });
 
-let currentTab = 'ativas';
+// ── Paleta de cores para prestadores ──
+const COLORS = ['#6c4fcc','#2563eb','#059669','#d97706','#dc2626','#7c3aed','#0891b2','#65a30d'];
+function colorFor(idx) { return COLORS[idx % COLORS.length]; }
+
+// ── Estado do mapa ──
+let map = null;
+let markers    = {};   // sessionId → L.marker
+let polylines  = {};   // sessionId → L.polyline
+let sessionIdx = {};   // sessionId → índice de cor
+let colorCount = 0;
+let selectedId = null;
 let generatedLink = '';
 
-function switchTab(tab) {
-  currentTab = tab;
-  document.querySelectorAll('.tab').forEach((t, i) => {
-    t.classList.toggle('active', (i === 0 && tab === 'ativas') || (i === 1 && tab === 'historico'));
-  });
-  document.getElementById('tab-ativas').style.display = tab === 'ativas' ? 'block' : 'none';
-  document.getElementById('tab-historico').style.display = tab === 'historico' ? 'block' : 'none';
-  closeDetail();
+// ── Init Leaflet ──
+function initMap() {
+  map = L.map('map', { zoomControl: false, attributionControl: true });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(map);
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  map.setView([-23.0889, -47.2208], 16);
 }
 
+// ── Cria marcador customizado ──
+function createIcon(initials, color) {
+  const html = `
+    <div class="marker-pin" style="background:${color};">
+      <div class="marker-pin-inner">${initials}</div>
+    </div>`;
+  return L.divIcon({ html, className:'', iconSize:[32,32], iconAnchor:[16,32], popupAnchor:[0,-36] });
+}
+
+function popupHtml(session, loc) {
+  const speed = loc ? Math.round(loc.speed||0) : 0;
+  const spdClass = speed > 30 ? 'color:var(--red);font-weight:700' : '';
+  return `
+    <div class="custom-popup">
+      <div class="custom-popup-token">${session.token}</div>
+      <div class="custom-popup-row">Entrada: <span>${formatTime(session.created_at)}</span></div>
+      <div class="custom-popup-row">Vel. atual: <span style="${spdClass}">${speed} km/h</span></div>
+      <div class="custom-popup-row">Tempo: <span>${calcDuration(session.created_at, null)}</span></div>
+    </div>`;
+}
+
+// ── Atualiza/cria marcador e polyline ──
+function upsertMarker(session, locs) {
+  const id = session.id;
+  if (!sessionIdx[id]) { sessionIdx[id] = colorCount++; }
+  const color    = colorFor(sessionIdx[id]);
+  const initials = session.token.slice(0,2).toUpperCase();
+  const last     = locs[locs.length - 1];
+  if (!last) return;
+
+  const latlng = [last.latitude, last.longitude];
+
+  // Marcador
+  if (markers[id]) {
+    markers[id].setLatLng(latlng);
+    markers[id].setIcon(createIcon(initials, color));
+    markers[id].setPopupContent(popupHtml(session, last));
+  } else {
+    const m = L.marker(latlng, { icon: createIcon(initials, color) })
+      .bindPopup(popupHtml(session, last), { closeButton:false, offset:[0,0] })
+      .addTo(map);
+    m.on('click', () => selectSession(session.id, session.token));
+    markers[id] = m;
+  }
+
+  // Polyline (trajeto)
+  const coords = locs.map(l => [l.latitude, l.longitude]);
+  if (polylines[id]) {
+    polylines[id].setLatLngs(coords);
+  } else {
+    polylines[id] = L.polyline(coords, {
+      color, weight: 3, opacity: 0.55,
+      dashArray: null, lineJoin: 'round',
+    }).addTo(map);
+  }
+}
+
+function removeMarker(id) {
+  if (markers[id])   { map.removeLayer(markers[id]);   delete markers[id]; }
+  if (polylines[id]) { map.removeLayer(polylines[id]); delete polylines[id]; }
+}
+
+// ── Centraliza o mapa ──
+function fitMapToActive(sessions) {
+  if (!sessions.length) return;
+  if (sessions.length === 1) {
+    const m = markers[sessions[0].id];
+    if (m) map.setView(m.getLatLng(), map.getZoom() < 15 ? 16 : map.getZoom());
+    return;
+  }
+  const group = L.featureGroup(Object.values(markers));
+  if (group.getLayers().length) map.fitBounds(group.getBounds().pad(0.3));
+}
+
+// ── Seleção de sessão ──
+async function selectSession(id, token) {
+  selectedId = id;
+  document.querySelectorAll('.session-card').forEach(c => c.classList.remove('selected'));
+  const card = document.getElementById(`card-${id}`);
+  if (card) card.classList.add('selected');
+
+  if (markers[id]) markers[id].openPopup();
+
+  document.getElementById('detail-token').textContent = token;
+  document.getElementById('detail-tempo').textContent = '…';
+  document.getElementById('detail-pts').textContent   = '…';
+  document.getElementById('detail-vel').textContent   = '…';
+  document.getElementById('detail-locations').innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--text-3)">Carregando…</div>';
+  document.getElementById('map-detail').classList.add('open');
+
+  try {
+    const r = await api(`locations?session_id=eq.${id}&order=timestamp.asc`);
+    const locs = await r.json();
+    if (!Array.isArray(locs) || !locs.length) {
+      document.getElementById('detail-locations').innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--text-3)">Nenhum ponto registrado ainda.</div>';
+      return;
+    }
+    const last = locs[locs.length-1];
+    const sessR = await api(`sessions?id=eq.${id}&select=created_at`);
+    const sessD = await sessR.json();
+    const start = sessD[0]?.created_at;
+
+    document.getElementById('detail-tempo').textContent = start ? calcDuration(start, null) : '—';
+    document.getElementById('detail-pts').textContent   = locs.length;
+    document.getElementById('detail-vel').textContent   = `${Math.round(last.speed||0)}`;
+
+    document.getElementById('detail-locations').innerHTML = [...locs].reverse().map((l,i) => {
+      const spd = Math.round(l.speed||0);
+      const spdClass = spd > 30 ? 'spd-high' : 'spd-ok';
+      return `<div class="detail-loc-row">
+        <span class="detail-loc-idx">${locs.length - i}</span>
+        <span class="detail-loc-time">${new Date(l.timestamp).toLocaleTimeString('pt-BR')}</span>
+        <span class="detail-loc-spd ${spdClass}">${spd} km/h</span>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('detail-locations').innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--red)">Erro ao carregar dados.</div>';
+  }
+}
+
+function closeDetail() {
+  document.getElementById('map-detail').classList.remove('open');
+  selectedId = null;
+  document.querySelectorAll('.session-card').forEach(c => c.classList.remove('selected'));
+}
+
+// ── Render sidebar ──
+function renderSidebar(ativas, historico) {
+  const cntAtivo = ativas.length;
+  const total    = cntAtivo + historico.length;
+  document.getElementById('cnt-ativo').textContent = cntAtivo;
+  document.getElementById('cnt-hoje').textContent  = total;
+  document.getElementById('update-time').textContent = `Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;
+
+  const badge = document.getElementById('badge-ativas');
+  badge.textContent   = cntAtivo;
+  badge.style.display = cntAtivo > 0 ? 'inline' : 'none';
+
+  renderList('list-ativas', ativas, true);
+  renderList('list-historico', historico, false);
+}
+
+function renderList(containerId, sessions, isActive) {
+  const el = document.getElementById(containerId);
+  if (!sessions.length) {
+    el.innerHTML = `<div class="empty-sidebar">${isActive ? 'Nenhum prestador ativo' : 'Nenhuma visita encerrada'}</div>`;
+    return;
+  }
+  el.innerHTML = sessions.map(s => {
+    const color    = sessionIdx[s.id] !== undefined ? colorFor(sessionIdx[s.id]) : '#6c4fcc';
+    const initials = s.token.slice(0,2).toUpperCase();
+    return `
+      <div class="session-card ${s.status==='finished'?'finished':''} ${selectedId===s.id?'selected':''}"
+           id="card-${s.id}" onclick="selectSession('${s.id}','${s.token}')">
+        <div class="session-avatar ${s.status==='active'?'avatar-active':'avatar-finished'}"
+             style="${s.status==='active'?`background:${color}20;color:${color}`:''}">
+          ${initials}
+        </div>
+        <div class="session-info">
+          <div class="session-token">${s.token}</div>
+          <div class="session-meta">
+            ${formatTime(s.created_at)}
+            ${s.status==='finished'
+              ? ` · ${calcDuration(s.created_at, s.ended_at)}`
+              : ` · ${calcDuration(s.created_at, null)}`}
+          </div>
+        </div>
+        <div class="pill ${s.status==='active'?'pill-active':'pill-finished'}">
+          <span class="pill-dot ${s.status==='active'?'pill-dot-active':'pill-dot-finished'}"></span>
+          ${s.status==='active'?'Ativo':'Fim'}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Ciclo principal ──
+let firstLoad = true;
+let knownActive = new Set();
+
+async function loadSessions() {
+  try {
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    const [ra, rh] = await Promise.all([
+      api('sessions?status=eq.active&order=created_at.desc&select=*'),
+      api(`sessions?status=eq.finished&created_at=gte.${today.toISOString()}&order=created_at.desc&select=*`)
+    ]);
+    const ativas   = await ra.json();
+    const historico = await rh.json();
+    const ativasArr  = Array.isArray(ativas)   ? ativas   : [];
+    const histArr    = Array.isArray(historico) ? historico : [];
+
+    renderSidebar(ativasArr, histArr);
+
+    // Remove marcadores de sessões que encerraram
+    const activeIds = new Set(ativasArr.map(s => s.id));
+    for (const id of knownActive) {
+      if (!activeIds.has(id)) removeMarker(id);
+    }
+    knownActive = activeIds;
+
+    // Busca localizações de todas as sessões ativas em paralelo
+    const locsResults = await Promise.all(
+      ativasArr.map(s => api(`locations?session_id=eq.${s.id}&order=timestamp.asc`).then(r => r.json()))
+    );
+
+    let hasMarkers = false;
+    ativasArr.forEach((s, i) => {
+      const locs = Array.isArray(locsResults[i]) ? locsResults[i] : [];
+      if (locs.length) {
+        upsertMarker(s, locs);
+        hasMarkers = true;
+      }
+    });
+
+    // Empty state
+    document.getElementById('map-empty').classList.toggle('show', !hasMarkers);
+
+    // Na primeira carga com dados, centra o mapa
+    if (firstLoad && hasMarkers) {
+      firstLoad = false;
+      fitMapToActive(ativasArr);
+    }
+
+    // Atualiza detalhe se aberto
+    if (selectedId && activeIds.has(selectedId)) {
+      const s = ativasArr.find(x => x.id === selectedId);
+      if (s) selectSession(s.id, s.token);
+    }
+
+  } catch(e) {
+    console.error('Erro ao carregar sessões:', e);
+  }
+}
+
+// ── Link ──
 function gerarLink() {
   const nome = document.getElementById('input-nome').value.trim();
-  const token = (nome ? nome.replace(/\s+/g,'-').toUpperCase().slice(0,8) : '') + Math.random().toString(36).substr(2,5).toUpperCase();
+  const token = (nome ? nome.replace(/\s+/g,'-').toUpperCase().slice(0,8) : '') +
+                Math.random().toString(36).substr(2,5).toUpperCase();
   generatedLink = `${CHECKIN_URL}?token=${token}`;
   const el = document.getElementById('link-result');
   el.textContent = generatedLink;
@@ -715,157 +599,23 @@ async function copiarLink() {
     await navigator.clipboard.writeText(generatedLink);
     document.getElementById('btn-copiar').textContent = '✓ Copiado!';
     setTimeout(() => { document.getElementById('btn-copiar').textContent = 'Copiar link'; }, 2000);
-  } catch(e) {
-    prompt('Copie o link:', generatedLink);
-  }
+  } catch(e) { prompt('Copie o link:', generatedLink); }
 }
 
+// ── Helpers ──
 function formatTime(iso) {
   if (!iso) return '--';
-  return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
 }
-
 function calcDuration(start, end) {
-  const s = Math.floor((new Date(end || Date.now()) - new Date(start)) / 1000);
-  const m = Math.floor(s / 60);
-  const hh = Math.floor(m / 60);
-  if (hh > 0) return `${hh}h ${m % 60}m`;
-  return `${m}m ${s % 60}s`;
+  const s = Math.floor((new Date(end||Date.now()) - new Date(start)) / 1000);
+  const m = Math.floor(s/60), hh = Math.floor(m/60);
+  if (hh > 0) return `${hh}h ${m%60}m`;
+  return `${m}m ${s%60}s`;
 }
 
-function getInitials(token) {
-  return token.slice(0, 2).toUpperCase();
-}
-
-async function loadSessions() {
-  try {
-    const today = new Date(); today.setHours(0,0,0,0);
-    const ra = await api('sessions?status=eq.active&order=created_at.desc&select=*');
-    const ativas = await ra.json();
-    const rh = await api(`sessions?status=eq.finished&created_at=gte.${today.toISOString()}&order=created_at.desc&select=*`);
-    const historico = await rh.json();
-
-    const cntAtivo = Array.isArray(ativas) ? ativas.length : 0;
-    const total = cntAtivo + (Array.isArray(historico) ? historico.length : 0);
-    document.getElementById('cnt-ativo').textContent = cntAtivo;
-    document.getElementById('cnt-hoje').textContent = total;
-    document.getElementById('update-time').textContent = `Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;
-
-    const badge = document.getElementById('badge-ativas');
-    if (cntAtivo > 0) {
-      badge.textContent = cntAtivo;
-      badge.style.display = 'inline-flex';
-    } else {
-      badge.style.display = 'none';
-    }
-
-    renderList('list-ativas', Array.isArray(ativas) ? ativas : [], true);
-    renderList('list-historico', Array.isArray(historico) ? historico : [], false);
-  } catch(e) { console.error(e); }
-}
-
-async function getLastLocation(sessionId) {
-  try {
-    const r = await api(`locations?session_id=eq.${sessionId}&order=timestamp.desc&limit=1`);
-    const d = await r.json();
-    return Array.isArray(d) && d.length ? d[0] : null;
-  } catch { return null; }
-}
-
-function renderList(containerId, sessions, isActive) {
-  const el = document.getElementById(containerId);
-  if (!sessions.length) {
-    el.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">${isActive ? '●' : '▤'}</div>
-        <div class="empty-title">${isActive ? 'Nenhum prestador ativo' : 'Nenhuma visita encerrada hoje'}</div>
-        <div class="empty-desc">${isActive ? 'Os prestadores autorizados aparecerão aqui em tempo real.' : 'O histórico do dia ficará registrado aqui.'}</div>
-      </div>`;
-    return;
-  }
-  el.innerHTML = sessions.map(s => `
-    <div class="session-card ${s.status === 'finished' ? 'finished' : ''}" onclick="viewDetail('${s.id}','${s.token}')">
-      <div class="session-avatar ${s.status === 'active' ? 'avatar-active' : 'avatar-finished'}">${getInitials(s.token)}</div>
-      <div class="session-info">
-        <div class="session-token">${s.token}</div>
-        <div class="session-meta">
-          Entrada: ${formatTime(s.created_at)}
-          ${s.status === 'finished'
-            ? ` &middot; Saída: ${formatTime(s.ended_at)} &middot; ${calcDuration(s.created_at, s.ended_at)}`
-            : ` &middot; ${calcDuration(s.created_at, null)} em andamento`}
-        </div>
-      </div>
-      <div class="session-stats">
-        <div class="session-pts" id="pts-${s.id}">— pts</div>
-        <div class="session-speed" id="spd-${s.id}">— km/h</div>
-      </div>
-      <div class="status-pill ${s.status === 'active' ? 'pill-active' : 'pill-finished'}">
-        <span class="pill-dot ${s.status === 'active' ? 'pill-dot-active' : 'pill-dot-finished'}"></span>
-        ${s.status === 'active' ? 'Ativo' : 'Encerrado'}
-      </div>
-    </div>`).join('');
-
-  sessions.forEach(async s => {
-    const loc = await getLastLocation(s.id);
-    if (loc) {
-      const rc = await api(`locations?session_id=eq.${s.id}&select=id`);
-      const locs = await rc.json();
-      const ptsEl = document.getElementById(`pts-${s.id}`);
-      const spdEl = document.getElementById(`spd-${s.id}`);
-      if (ptsEl) ptsEl.textContent = `${Array.isArray(locs) ? locs.length : '—'} pts`;
-      if (spdEl) spdEl.textContent = `${loc.speed ? Math.round(loc.speed) : 0} km/h`;
-    }
-  });
-}
-
-async function viewDetail(id, token) {
-  document.getElementById('detail-title-text').textContent = `Trajeto — ${token}`;
-  document.getElementById('detail-content').innerHTML = '<div class="loading"><div class="loader"></div><br>Carregando pontos…</div>';
-  document.getElementById('detail-panel').classList.add('open');
-
-  try {
-    const r = await api(`locations?session_id=eq.${id}&order=timestamp.asc`);
-    const locs = await r.json();
-
-    if (!Array.isArray(locs) || !locs.length) {
-      document.getElementById('detail-content').innerHTML = '<p style="color:var(--text-3);font-size:13.5px;padding:8px 0;">Nenhum ponto de localização registrado.</p>';
-      return;
-    }
-
-    document.getElementById('detail-content').innerHTML = `
-      <p style="font-size:12.5px;color:var(--text-3);margin-bottom:16px;font-weight:500;">${locs.length} pontos registrados</p>
-      <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border);">
-        <table class="locations-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Hora</th>
-              <th>Latitude</th>
-              <th>Longitude</th>
-              <th>Velocidade</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${locs.map((l, i) => `
-              <tr>
-                <td class="row-num">${i + 1}</td>
-                <td style="font-weight:500;">${new Date(l.timestamp).toLocaleTimeString('pt-BR')}</td>
-                <td class="coord">${Number(l.latitude).toFixed(6)}</td>
-                <td class="coord">${Number(l.longitude).toFixed(6)}</td>
-                <td class="${l.speed > 30 ? 'speed-high' : 'speed-normal'}">${Math.round(l.speed || 0)} km/h${l.speed > 30 ? ' ↑' : ''}</td>
-              </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>`;
-  } catch(e) {
-    document.getElementById('detail-content').innerHTML = '<p style="color:var(--red);font-size:13.5px;padding:8px 0;">Erro ao carregar dados.</p>';
-  }
-}
-
-function closeDetail() {
-  document.getElementById('detail-panel').classList.remove('open');
-}
-
+// ── Boot ──
+initMap();
 loadSessions();
 setInterval(loadSessions, 5000);
 </script>
