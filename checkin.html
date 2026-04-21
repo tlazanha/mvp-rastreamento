@@ -637,6 +637,12 @@ let trackInterval = null, timerInterval = null;
 let sessionStart = null, lastPosition = null, lastTimestamp = null;
 let pontos = 0, timelineItems = [];
 let swRegistration = null; // Service Worker
+let swAtivo       = false;  // true quando SW está controlando gravação
+let lastSentLat   = null;   // última lat gravada (deduplicação)
+let lastSentLng   = null;   // última lng gravada
+let lastSentTs    = 0;      // timestamp do último envio ao banco
+const MIN_INTERVAL_MS  = 10000; // intervalo mínimo entre gravações (ms)
+const MIN_DISTANCE_M   = 5;     // distância mínima para novo registro (m)
 
 // ── Registro do Service Worker ──
 async function registrarSW() {
@@ -872,10 +878,8 @@ async function iniciarAcesso() {
 }
 
 // Última coordenada enviada ao banco (para deduplicação)
-let lastSentLat = null, lastSentLng = null;
 
 // Distância mínima em metros para gerar novo registro
-const MIN_DISTANCE_M = 5;
 
 // Haversine simplificado — retorna distância em metros entre dois pontos
 function distanceMeters(lat1, lng1, lat2, lng2) {
@@ -888,12 +892,7 @@ function distanceMeters(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-// Intervalo mínimo entre gravações no banco (ms)
-const MIN_INTERVAL_MS = 10000;
-let lastSentTs  = 0;
-let lastSentLat = null, lastSentLng = null;
-const MIN_DISTANCE_M = 5;
-let swAtivo = false; // true quando SW está controlando gravação
+// (variáveis de rastreamento declaradas no topo)
 
 // Grava ponto diretamente no banco (usado quando SW não está disponível)
 async function sendLocationDirect(lat, lng, speed, ts) {

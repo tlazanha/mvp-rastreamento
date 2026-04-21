@@ -319,12 +319,17 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 @media (max-width: 600px) and (orientation: portrait) {
   .bottom-nav { display: none; }
 
+  /* Header: z-index abaixo da tab-bar no portrait */
+  .mobile-header {
+    z-index: 1080;
+  }
+
   /* Tab bar abaixo do header */
   .tab-bar {
     display: flex;
     position: fixed;
     top: calc(52px + env(safe-area-inset-top, 0px));
-    left: 0; right: 0; z-index: 1090;
+    left: 0; right: 0; z-index: 1110;
     background: var(--navy);
     border-bottom: 1px solid rgba(255,255,255,0.08);
   }
@@ -337,6 +342,9 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
     transition: color 0.15s, border-color 0.15s;
     -webkit-tap-highlight-color: transparent;
     position: relative;
+    /* Área de toque generosa para mobile */
+    min-height: 44px;
+    touch-action: manipulation;
   }
   .tab-bar-btn.active { color: #fff; border-bottom-color: var(--green); }
   .tab-bar-btn svg  { width: 18px; height: 18px; }
@@ -370,6 +378,8 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   #panel-mapa .main {
     position: absolute; inset: 0;
     top: 0; height: 100%;
+    /* Não bloqueia cliques fora do painel */
+    pointer-events: auto;
   }
 
   /* Painel ativos/histórico */
@@ -1022,6 +1032,28 @@ window.addEventListener('resize', () => {
 // ── Boot ──
 initMap();
 syncDates(todayLocal());
+
+// Se portrait: move o mapa para o panel-mapa desde o início
+function setupPortraitLayout() {
+  if (window.innerWidth <= 600 && window.innerHeight > window.innerWidth) {
+    const main = document.getElementById('main-map');
+    const panelMapa = document.getElementById('panel-mapa');
+    if (main && panelMapa && !panelMapa.contains(main)) {
+      panelMapa.appendChild(main);
+      setTimeout(() => map && map.invalidateSize(), 100);
+    }
+  }
+}
+setupPortraitLayout();
+
+// Re-executa ao girar a tela
+window.addEventListener('resize', () => {
+  setTimeout(() => {
+    setupPortraitLayout();
+    map && map.invalidateSize();
+  }, 200);
+});
+
 loadSessions();
 setInterval(loadSessions, 5000);
 </script>
