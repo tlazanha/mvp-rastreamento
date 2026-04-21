@@ -4,239 +4,670 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portaria — Painel de Controle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; background: #f4f3ef; font-family: -apple-system, 'Helvetica Neue', sans-serif; color: #1a2744; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* Layout */
-  .layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+  :root {
+    --navy:       #17151f;
+    --navy-mid:   #221f2e;
+    --navy-light: rgba(255,255,255,0.07);
+    --green:      #6c4fcc;
+    --green-bg:   #ede8fa;
+    --green-text: #4a32a8;
+    --amber:      oklch(68% 0.14 72);
+    --amber-bg:   oklch(96% 0.04 72);
+    --red:        #c94040;
+    --bg:         #f4f3f7;
+    --surface:    #ffffff;
+    --border:     rgba(0,0,0,0.07);
+    --border-mid: rgba(0,0,0,0.11);
+    --text:       #110f1a;
+    --text-2:     #635d7a;
+    --text-3:     #9d96b8;
+    --mono:       'JetBrains Mono', monospace;
+    --sans:       'Plus Jakarta Sans', sans-serif;
+  }
 
-  /* Sidebar */
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    font-family: var(--sans);
+    color: var(--text);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Layout ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 288px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ── Sidebar ── */
   .sidebar {
-    background: #1a2744;
+    background: var(--navy);
     color: #fff;
-    display: flex; flex-direction: column;
-    padding: 0;
-    position: fixed; top: 0; left: 0; bottom: 0; width: 280px;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 288px;
     overflow-y: auto;
+    overflow-x: hidden;
   }
-  .sidebar-header { padding: 32px 24px 24px; border-bottom: 0.5px solid rgba(255,255,255,0.1); }
-  .sidebar-logo { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.45; margin-bottom: 6px; }
-  .sidebar-title { font-size: 18px; font-weight: 600; }
-  .sidebar-sub { font-size: 12px; opacity: 0.5; margin-top: 2px; }
 
-  .sidebar-section { padding: 20px 24px 12px; }
-  .sidebar-section-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.4; margin-bottom: 12px; }
+  /* scrollbar sidebar */
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
 
-  .metric { margin-bottom: 14px; }
-  .metric-value { font-size: 28px; font-weight: 600; letter-spacing: -1px; }
-  .metric-label { font-size: 12px; opacity: 0.5; margin-top: 1px; }
-  .metric-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
-  .dot-green { background: #639922; animation: pulse 2s infinite; }
-  .dot-gray { background: #888; }
-
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-  .sidebar-divider { height: 0.5px; background: rgba(255,255,255,0.08); margin: 0 24px; }
-
-  /* Gerar link */
-  .link-form { padding: 20px 24px; }
-  .link-form label { font-size: 11px; letter-spacing: 0.08em; opacity: 0.5; text-transform: uppercase; display: block; margin-bottom: 8px; }
-  .link-form input {
-    width: 100%; padding: 10px 12px;
-    background: rgba(255,255,255,0.06);
-    border: 0.5px solid rgba(255,255,255,0.15);
-    border-radius: 8px; color: #fff; font-size: 14px;
-    outline: none; margin-bottom: 8px;
+  .sidebar-header {
+    padding: 36px 28px 28px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
   }
-  .link-form input::placeholder { opacity: 0.35; }
-  .link-form input:focus { border-color: rgba(255,255,255,0.4); }
-  .btn-gerar {
-    width: 100%; padding: 10px; border: none;
-    background: rgba(255,255,255,0.12); color: #fff;
-    border-radius: 8px; font-size: 13px; font-weight: 500;
-    cursor: pointer; transition: background 0.15s;
+
+  .sidebar-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.38);
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
-  .btn-gerar:hover { background: rgba(255,255,255,0.2); }
-  .link-result {
-    margin-top: 10px; padding: 10px 12px;
+  .sidebar-eyebrow::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,0.1);
+  }
+
+  .sidebar-brand {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+    color: #fff;
+  }
+
+  .sidebar-time {
+    margin-top: 6px;
+    font-size: 11.5px;
+    color: rgba(255,255,255,0.38);
+    font-weight: 400;
+  }
+
+  /* Metrics */
+  .sidebar-metrics {
+    padding: 24px 28px 20px;
+  }
+
+  .metric-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 0;
+  }
+
+  .metric-block {
     background: rgba(255,255,255,0.05);
-    border: 0.5px solid rgba(255,255,255,0.1);
-    border-radius: 8px;
-    font-size: 11px; color: rgba(255,255,255,0.6);
-    word-break: break-all; display: none;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 14px 16px;
   }
+
+  .metric-block-label {
+    font-size: 10.5px;
+    color: rgba(255,255,255,0.38);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .metric-block-value {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 0 oklch(50% 0.13 145 / 0.5);
+    animation: ring 2s infinite;
+    flex-shrink: 0;
+  }
+  @keyframes ring {
+    0%   { box-shadow: 0 0 0 0 rgba(108, 79, 204, 0.5); }
+    60%  { box-shadow: 0 0 0 5px rgba(108, 79, 204, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(108, 79, 204, 0); }
+  }
+
+  /* Divider */
+  .sidebar-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.07);
+    margin: 0 28px;
+  }
+
+  /* Link generator */
+  .link-section {
+    padding: 22px 28px;
+  }
+
+  .link-section-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.38);
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+
+  .field-label {
+    font-size: 11.5px;
+    color: rgba(255,255,255,0.5);
+    font-weight: 500;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .field-input {
+    width: 100%;
+    padding: 10px 13px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 9px;
+    color: #fff;
+    font-size: 13.5px;
+    font-family: var(--sans);
+    outline: none;
+    margin-bottom: 10px;
+    transition: border-color 0.15s;
+  }
+  .field-input::placeholder { color: rgba(255,255,255,0.25); }
+  .field-input:focus { border-color: rgba(255,255,255,0.35); background: rgba(255,255,255,0.09); }
+
+  .btn-gerar {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 9px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    letter-spacing: 0.01em;
+  }
+  .btn-gerar:hover { background: rgba(255,255,255,0.17); border-color: rgba(255,255,255,0.25); }
+
+  .link-result {
+    margin-top: 10px;
+    padding: 10px 13px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 9px;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: rgba(255,255,255,0.55);
+    word-break: break-all;
+    line-height: 1.5;
+    display: none;
+  }
+
   .btn-copiar {
-    width: 100%; margin-top: 6px; padding: 8px;
-    background: #639922; color: #fff; border: none;
-    border-radius: 8px; font-size: 13px; font-weight: 500;
-    cursor: pointer; display: none;
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px;
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--sans);
+    cursor: pointer;
+    display: none;
+    transition: filter 0.15s;
   }
-  .btn-copiar:hover { background: #527e1b; }
+  .btn-copiar:hover { filter: brightness(1.1); }
 
-  .sidebar-footer { margin-top: auto; padding: 16px 24px; font-size: 11px; opacity: 0.3; }
-
-  /* Main */
-  .main { margin-left: 280px; padding: 32px; }
-  .main-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-  .main-title { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
-  .main-sub { font-size: 13px; color: #999; margin-top: 2px; }
-
-  .refresh-badge {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 12px; color: #888; padding: 6px 12px;
-    background: #fff; border-radius: 20px;
-    border: 0.5px solid rgba(0,0,0,0.08);
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 16px 28px 24px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.25);
   }
-  .refresh-dot { width: 6px; height: 6px; border-radius: 50%; background: #639922; animation: pulse 2s infinite; }
+  .footer-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.2); animation: blink 5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── Main ── */
+  .main {
+    margin-left: 288px;
+    padding: 36px 36px 48px;
+    min-height: 100vh;
+  }
+
+  .main-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+
+  .main-title-block {}
+  .main-title {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  .main-sub {
+    font-size: 13px;
+    color: var(--text-2);
+    margin-top: 3px;
+    font-weight: 400;
+  }
+
+  .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border-mid);
+    border-radius: 24px;
+    font-size: 12px;
+    color: var(--text-2);
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .live-badge-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: ring 2.5s infinite;
+  }
 
   /* Tabs */
-  .tabs { display: flex; gap: 2px; margin-bottom: 20px; background: #ebe9e4; padding: 3px; border-radius: 10px; width: fit-content; }
-  .tab { padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; color: #888; transition: all 0.15s; border: none; background: none; }
-  .tab.active { background: #fff; color: #1a2744; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-
-  /* Sessions table */
-  .sessions-list { display: flex; flex-direction: column; gap: 10px; }
-  .session-card {
-    background: #fff; border-radius: 12px;
-    border: 0.5px solid rgba(0,0,0,0.08);
-    padding: 16px 20px;
-    display: grid; grid-template-columns: auto 1fr auto auto;
-    gap: 16px; align-items: center;
-    transition: box-shadow 0.15s;
+  .tabs-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
   }
-  .session-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-  .session-card.finished { opacity: 0.6; }
+
+  .tabs {
+    display: flex;
+    background: rgba(0,0,0,0.05);
+    padding: 3px;
+    border-radius: 11px;
+    gap: 2px;
+  }
+  .tab {
+    padding: 7px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-2);
+    transition: all 0.15s;
+    border: none;
+    background: none;
+    font-family: var(--sans);
+    letter-spacing: 0.01em;
+  }
+  .tab.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05);
+  }
+
+  .tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: 700;
+    margin-left: 5px;
+    background: var(--navy);
+    color: #fff;
+    vertical-align: middle;
+  }
+
+  /* Session list */
+  .sessions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .session-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 22px;
+    display: grid;
+    grid-template-columns: 44px 1fr auto auto;
+    gap: 16px;
+    align-items: center;
+    cursor: pointer;
+    transition: box-shadow 0.18s, border-color 0.18s, transform 0.12s;
+    position: relative;
+  }
+  .session-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+    border-color: rgba(0,0,0,0.13);
+    transform: translateY(-1px);
+  }
+  .session-card.finished {
+    opacity: 0.55;
+  }
+  .session-card.finished:hover {
+    opacity: 0.75;
+  }
 
   .session-avatar {
-    width: 40px; height: 40px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 600;
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
   }
-  .avatar-active { background: #eaf3de; color: #3b6d11; }
-  .avatar-finished { background: #f0f0ee; color: #888; }
+  .avatar-active {
+    background: var(--green-bg);
+    color: var(--green-text);
+  }
+  .avatar-finished {
+    background: #f1f0ed;
+    color: #9ca3af;
+  }
 
   .session-info {}
-  .session-token { font-size: 14px; font-weight: 600; color: #1a2744; }
-  .session-meta { font-size: 12px; color: #aaa; margin-top: 2px; }
-
-  .session-stats { text-align: right; }
-  .session-pts { font-size: 13px; font-weight: 500; color: #1a2744; }
-  .session-speed { font-size: 11px; color: #aaa; margin-top: 2px; }
-
-  .status-pill {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 5px 10px; border-radius: 20px;
-    font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
-    white-space: nowrap;
+  .session-token {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.1px;
   }
-  .pill-active { background: #eaf3de; color: #3b6d11; }
-  .pill-finished { background: #f0f0ee; color: #888; }
-  .pill-dot { width: 6px; height: 6px; border-radius: 50%; }
-  .pill-dot-active { background: #639922; animation: pulse 2s infinite; }
-  .pill-dot-finished { background: #bbb; }
+  .session-meta {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 3px;
+    font-weight: 400;
+  }
+
+  .session-stats {
+    text-align: right;
+  }
+  .session-pts {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    font-family: var(--mono);
+  }
+  .session-speed {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 3px;
+    font-family: var(--mono);
+  }
+
+  /* Status pill */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+  .pill-active {
+    background: var(--green-bg);
+    color: var(--green-text);
+  }
+  .pill-finished {
+    background: #f1f0ed;
+    color: #9ca3af;
+  }
+  .pill-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }
+  .pill-dot-active {
+    background: var(--green);
+    animation: ring 2s infinite;
+  }
+  .pill-dot-finished {
+    background: #d1d5db;
+  }
 
   /* Detail panel */
-  .detail-panel { background: #fff; border-radius: 14px; border: 0.5px solid rgba(0,0,0,0.08); padding: 24px; display: none; }
+  .detail-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    display: none;
+    margin-top: 20px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  }
   .detail-panel.open { display: block; }
-  .detail-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
-  .btn-close { background: #f4f3ef; border: none; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; color: #888; }
 
-  .locations-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .locations-table th { text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #aaa; font-weight: 500; border-bottom: 0.5px solid #f0efeb; }
-  .locations-table td { padding: 8px 10px; border-bottom: 0.5px solid #f8f7f4; color: #444; }
-  .locations-table tr:last-child td { border-bottom: none; }
-  .speed-high { color: #a32d2d; font-weight: 600; }
+  .detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-title-text {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+  }
+  .btn-close {
+    background: #f3f2ef;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 13px;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-2);
+    font-family: var(--sans);
+    transition: background 0.15s;
+  }
+  .btn-close:hover { background: #ebe9e4; }
+
+  /* Table */
+  .locations-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .locations-table thead th {
+    text-align: left;
+    padding: 9px 12px;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-3);
+    font-weight: 700;
+    border-bottom: 1px solid var(--border);
+    background: #fafaf8;
+  }
+  .locations-table thead th:first-child { border-radius: 8px 0 0 0; }
+  .locations-table thead th:last-child { border-radius: 0 8px 0 0; }
+  .locations-table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #fafaf8;
+    color: var(--text-2);
+    font-weight: 400;
+  }
+  .locations-table tbody tr:last-child td { border-bottom: none; }
+  .locations-table tbody tr:hover td { background: #fafaf8; }
+  .coord { font-family: var(--mono); font-size: 12.5px; color: var(--text); }
+  .speed-high { color: var(--red); font-weight: 700; font-family: var(--mono); }
+  .speed-normal { font-family: var(--mono); }
+  .row-num { color: var(--text-3); font-family: var(--mono); font-size: 11.5px; }
 
   /* Empty state */
-  .empty-state { text-align: center; padding: 60px 20px; color: #bbb; }
-  .empty-icon { font-size: 40px; margin-bottom: 12px; }
-  .empty-text { font-size: 15px; }
+  .empty-state {
+    text-align: center;
+    padding: 64px 20px;
+    color: var(--text-3);
+  }
+  .empty-icon {
+    width: 52px; height: 52px;
+    border-radius: 16px;
+    background: #f1f0ed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 22px;
+  }
+  .empty-title { font-size: 14.5px; font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
+  .empty-desc { font-size: 13px; color: var(--text-3); }
 
   /* Loading */
-  .loading { text-align: center; padding: 40px; color: #bbb; font-size: 14px; }
-  .loader { width: 24px; height: 24px; border: 2px solid #e8e7e2; border-top-color: #1a2744; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; margin-bottom: 8px; }
+  .loading {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-3);
+    font-size: 13.5px;
+  }
+  .loader {
+    width: 22px; height: 22px;
+    border: 2px solid #e5e3de;
+    border-top-color: var(--navy);
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+    display: inline-block;
+    margin-bottom: 10px;
+  }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  @media (max-width: 768px) {
+  /* Responsive */
+  @media (max-width: 900px) {
     .layout { grid-template-columns: 1fr; }
     .sidebar { position: static; width: 100%; }
-    .main { margin-left: 0; padding: 16px; }
-    .session-card { grid-template-columns: auto 1fr auto; }
+    .main { margin-left: 0; padding: 20px; }
+    .session-card { grid-template-columns: 44px 1fr auto; }
     .session-stats { display: none; }
   }
 </style>
 </head>
 <body>
 <div class="layout">
-  <!-- Sidebar -->
+
+  <!-- ── Sidebar ── -->
   <nav class="sidebar">
     <div class="sidebar-header">
-      <div class="sidebar-logo">Sistema de Acesso</div>
-      <div class="sidebar-title">Portaria</div>
-      <div class="sidebar-sub" id="update-time">Atualizando...</div>
+      <div class="sidebar-eyebrow">Sistema de Acesso</div>
+      <div class="sidebar-brand">Portaria</div>
+      <div class="sidebar-time" id="update-time">Atualizando…</div>
     </div>
 
-    <div class="sidebar-section">
-      <div class="sidebar-section-label">Visão geral</div>
-      <div class="metric">
-        <div class="metric-value" id="total-ativo">
-          <span class="metric-dot dot-green"></span><span id="cnt-ativo">0</span>
+    <div class="sidebar-metrics">
+      <div class="metric-row">
+        <div class="metric-block">
+          <div class="metric-block-label">Ativos agora</div>
+          <div class="metric-block-value">
+            <span class="live-dot"></span>
+            <span id="cnt-ativo">0</span>
+          </div>
         </div>
-        <div class="metric-label">Prestadores ativos</div>
-      </div>
-      <div class="metric">
-        <div class="metric-value" id="cnt-hoje">0</div>
-        <div class="metric-label">Visitas hoje</div>
+        <div class="metric-block">
+          <div class="metric-block-label">Visitas hoje</div>
+          <div class="metric-block-value" id="cnt-hoje">0</div>
+        </div>
       </div>
     </div>
 
     <div class="sidebar-divider"></div>
 
-    <div class="link-form">
-      <label>Gerar link de acesso</label>
-      <input type="text" id="input-nome" placeholder="Nome ou serviço (opcional)">
-      <button class="btn-gerar" onclick="gerarLink()">Gerar link</button>
+    <div class="link-section">
+      <div class="link-section-label">Gerar link de acesso</div>
+      <label class="field-label">Nome ou serviço</label>
+      <input class="field-input" type="text" id="input-nome" placeholder="Ex: Encanador, XPTO Manutenção">
+      <button class="btn-gerar" onclick="gerarLink()">Gerar link de acesso</button>
       <div class="link-result" id="link-result"></div>
       <button class="btn-copiar" id="btn-copiar" onclick="copiarLink()">Copiar link</button>
     </div>
 
     <div class="sidebar-divider"></div>
-    <div class="sidebar-footer">Atualização automática a cada 5s</div>
+    <div class="sidebar-footer">
+      <span class="footer-dot"></span>
+      Atualização automática a cada 5s
+    </div>
   </nav>
 
-  <!-- Main -->
+  <!-- ── Main ── -->
   <main class="main">
     <div class="main-header">
-      <div>
+      <div class="main-title-block">
         <div class="main-title">Sessões</div>
         <div class="main-sub">Monitoramento em tempo real</div>
       </div>
-      <div class="refresh-badge">
-        <span class="refresh-dot"></span>
+      <div class="live-badge">
+        <span class="live-badge-dot"></span>
         Ao vivo
       </div>
     </div>
 
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('ativas')">Ativas</button>
-      <button class="tab" onclick="switchTab('historico')">Histórico hoje</button>
+    <div class="tabs-bar">
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('ativas')">
+          Ativas <span class="tab-count" id="badge-ativas" style="display:none">0</span>
+        </button>
+        <button class="tab" onclick="switchTab('historico')">Histórico hoje</button>
+      </div>
     </div>
 
     <div id="tab-ativas">
       <div class="sessions-list" id="list-ativas">
-        <div class="loading"><div class="loader"></div><br>Carregando...</div>
+        <div class="loading"><div class="loader"></div><br>Carregando sessões…</div>
       </div>
     </div>
     <div id="tab-historico" style="display:none">
       <div class="sessions-list" id="list-historico">
-        <div class="loading"><div class="loader"></div><br>Carregando...</div>
+        <div class="loading"><div class="loader"></div><br>Carregando histórico…</div>
       </div>
     </div>
 
     <div class="detail-panel" id="detail-panel">
-      <div class="detail-title">
-        <span id="detail-title-text">Detalhes da sessão</span>
+      <div class="detail-header">
+        <span class="detail-title-text" id="detail-title-text">Detalhes da sessão</span>
         <button class="btn-close" onclick="closeDetail()">Fechar</button>
       </div>
       <div id="detail-content"></div>
@@ -254,7 +685,6 @@ const h = {
   'apikey': SUPABASE_KEY,
   'Authorization': `Bearer ${SUPABASE_KEY}`
 };
-
 const api = (path, opts = {}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: { ...h, ...(opts.extraHeaders||{}) }, ...opts });
 
 let currentTab = 'ativas';
@@ -298,8 +728,8 @@ function formatTime(iso) {
 function calcDuration(start, end) {
   const s = Math.floor((new Date(end || Date.now()) - new Date(start)) / 1000);
   const m = Math.floor(s / 60);
-  const h = Math.floor(m / 60);
-  if (h > 0) return `${h}h ${m % 60}m`;
+  const hh = Math.floor(m / 60);
+  if (hh > 0) return `${hh}h ${m % 60}m`;
   return `${m}m ${s % 60}s`;
 }
 
@@ -310,27 +740,28 @@ function getInitials(token) {
 async function loadSessions() {
   try {
     const today = new Date(); today.setHours(0,0,0,0);
-
-    // Ativas
     const ra = await api('sessions?status=eq.active&order=created_at.desc&select=*');
     const ativas = await ra.json();
-
-    // Histórico hoje (encerradas)
     const rh = await api(`sessions?status=eq.finished&created_at=gte.${today.toISOString()}&order=created_at.desc&select=*`);
     const historico = await rh.json();
 
-    // Stats
-    document.getElementById('cnt-ativo').textContent = Array.isArray(ativas) ? ativas.length : 0;
-    const total = (Array.isArray(ativas) ? ativas.length : 0) + (Array.isArray(historico) ? historico.length : 0);
+    const cntAtivo = Array.isArray(ativas) ? ativas.length : 0;
+    const total = cntAtivo + (Array.isArray(historico) ? historico.length : 0);
+    document.getElementById('cnt-ativo').textContent = cntAtivo;
     document.getElementById('cnt-hoje').textContent = total;
     document.getElementById('update-time').textContent = `Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;
 
+    const badge = document.getElementById('badge-ativas');
+    if (cntAtivo > 0) {
+      badge.textContent = cntAtivo;
+      badge.style.display = 'inline-flex';
+    } else {
+      badge.style.display = 'none';
+    }
+
     renderList('list-ativas', Array.isArray(ativas) ? ativas : [], true);
     renderList('list-historico', Array.isArray(historico) ? historico : [], false);
-
-  } catch(e) {
-    console.error(e);
-  }
+  } catch(e) { console.error(e); }
 }
 
 async function getLastLocation(sessionId) {
@@ -344,40 +775,44 @@ async function getLastLocation(sessionId) {
 function renderList(containerId, sessions, isActive) {
   const el = document.getElementById(containerId);
   if (!sessions.length) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">${isActive ? '🟢' : '📋'}</div><div class="empty-text">${isActive ? 'Nenhum prestador ativo no momento' : 'Nenhuma visita encerrada hoje'}</div></div>`;
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">${isActive ? '●' : '▤'}</div>
+        <div class="empty-title">${isActive ? 'Nenhum prestador ativo' : 'Nenhuma visita encerrada hoje'}</div>
+        <div class="empty-desc">${isActive ? 'Os prestadores autorizados aparecerão aqui em tempo real.' : 'O histórico do dia ficará registrado aqui.'}</div>
+      </div>`;
     return;
   }
   el.innerHTML = sessions.map(s => `
-    <div class="session-card ${s.status === 'finished' ? 'finished' : ''}" onclick="viewDetail('${s.id}', '${s.token}')">
+    <div class="session-card ${s.status === 'finished' ? 'finished' : ''}" onclick="viewDetail('${s.id}','${s.token}')">
       <div class="session-avatar ${s.status === 'active' ? 'avatar-active' : 'avatar-finished'}">${getInitials(s.token)}</div>
       <div class="session-info">
         <div class="session-token">${s.token}</div>
         <div class="session-meta">
           Entrada: ${formatTime(s.created_at)}
-          ${s.status === 'finished' ? ` · Saída: ${formatTime(s.ended_at)} · ${calcDuration(s.created_at, s.ended_at)}` : ` · ${calcDuration(s.created_at, null)} em andamento`}
+          ${s.status === 'finished'
+            ? ` &middot; Saída: ${formatTime(s.ended_at)} &middot; ${calcDuration(s.created_at, s.ended_at)}`
+            : ` &middot; ${calcDuration(s.created_at, null)} em andamento`}
         </div>
       </div>
       <div class="session-stats">
-        <div class="session-pts" id="pts-${s.id}">-- pts</div>
-        <div class="session-speed" id="spd-${s.id}">-- km/h</div>
+        <div class="session-pts" id="pts-${s.id}">— pts</div>
+        <div class="session-speed" id="spd-${s.id}">— km/h</div>
       </div>
       <div class="status-pill ${s.status === 'active' ? 'pill-active' : 'pill-finished'}">
         <span class="pill-dot ${s.status === 'active' ? 'pill-dot-active' : 'pill-dot-finished'}"></span>
         ${s.status === 'active' ? 'Ativo' : 'Encerrado'}
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 
-  // Carrega stats de localização async
   sessions.forEach(async s => {
     const loc = await getLastLocation(s.id);
     if (loc) {
-      const ptsEl = document.getElementById(`pts-${s.id}`);
-      const spdEl = document.getElementById(`spd-${s.id}`);
-      // count
       const rc = await api(`locations?session_id=eq.${s.id}&select=id`);
       const locs = await rc.json();
-      if (ptsEl) ptsEl.textContent = `${Array.isArray(locs) ? locs.length : '--'} pts`;
+      const ptsEl = document.getElementById(`pts-${s.id}`);
+      const spdEl = document.getElementById(`spd-${s.id}`);
+      if (ptsEl) ptsEl.textContent = `${Array.isArray(locs) ? locs.length : '—'} pts`;
       if (spdEl) spdEl.textContent = `${loc.speed ? Math.round(loc.speed) : 0} km/h`;
     }
   });
@@ -385,22 +820,21 @@ function renderList(containerId, sessions, isActive) {
 
 async function viewDetail(id, token) {
   document.getElementById('detail-title-text').textContent = `Trajeto — ${token}`;
-  document.getElementById('detail-content').innerHTML = '<div class="loading"><div class="loader"></div><br>Carregando pontos...</div>';
+  document.getElementById('detail-content').innerHTML = '<div class="loading"><div class="loader"></div><br>Carregando pontos…</div>';
   document.getElementById('detail-panel').classList.add('open');
-  document.getElementById('detail-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   try {
     const r = await api(`locations?session_id=eq.${id}&order=timestamp.asc`);
     const locs = await r.json();
 
     if (!Array.isArray(locs) || !locs.length) {
-      document.getElementById('detail-content').innerHTML = '<p style="color:#aaa;font-size:14px;">Nenhum ponto de localização registrado.</p>';
+      document.getElementById('detail-content').innerHTML = '<p style="color:var(--text-3);font-size:13.5px;padding:8px 0;">Nenhum ponto de localização registrado.</p>';
       return;
     }
 
     document.getElementById('detail-content').innerHTML = `
-      <p style="font-size:13px;color:#aaa;margin-bottom:12px;">${locs.length} pontos registrados</p>
-      <div style="overflow-x:auto;">
+      <p style="font-size:12.5px;color:var(--text-3);margin-bottom:16px;font-weight:500;">${locs.length} pontos registrados</p>
+      <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border);">
         <table class="locations-table">
           <thead>
             <tr>
@@ -414,19 +848,17 @@ async function viewDetail(id, token) {
           <tbody>
             ${locs.map((l, i) => `
               <tr>
-                <td style="color:#bbb;">${i + 1}</td>
-                <td>${new Date(l.timestamp).toLocaleTimeString('pt-BR')}</td>
-                <td style="font-family:monospace;">${Number(l.latitude).toFixed(6)}</td>
-                <td style="font-family:monospace;">${Number(l.longitude).toFixed(6)}</td>
-                <td class="${l.speed > 30 ? 'speed-high' : ''}">${Math.round(l.speed || 0)} km/h ${l.speed > 30 ? '⚡' : ''}</td>
-              </tr>
-            `).join('')}
+                <td class="row-num">${i + 1}</td>
+                <td style="font-weight:500;">${new Date(l.timestamp).toLocaleTimeString('pt-BR')}</td>
+                <td class="coord">${Number(l.latitude).toFixed(6)}</td>
+                <td class="coord">${Number(l.longitude).toFixed(6)}</td>
+                <td class="${l.speed > 30 ? 'speed-high' : 'speed-normal'}">${Math.round(l.speed || 0)} km/h${l.speed > 30 ? ' ↑' : ''}</td>
+              </tr>`).join('')}
           </tbody>
         </table>
-      </div>
-    `;
+      </div>`;
   } catch(e) {
-    document.getElementById('detail-content').innerHTML = '<p style="color:#a32d2d;font-size:14px;">Erro ao carregar dados.</p>';
+    document.getElementById('detail-content').innerHTML = '<p style="color:var(--red);font-size:13.5px;padding:8px 0;">Erro ao carregar dados.</p>';
   }
 }
 
@@ -434,7 +866,6 @@ function closeDetail() {
   document.getElementById('detail-panel').classList.remove('open');
 }
 
-// Init
 loadSessions();
 setInterval(loadSessions, 5000);
 </script>
