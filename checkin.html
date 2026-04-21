@@ -624,113 +624,33 @@
 <script>
 const SUPABASE_URL = 'https://xijwxqyvxoyhjekhkrfm.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_o-FGHOuSygRdquiMZZ922g_WSDk_B3Z';
+const TZ = 'America/Sao_Paulo';
 
-const headers = {
-  'Content-Type': 'application/json',
-  'apikey': SUPABASE_KEY,
-  'Authorization': `Bearer ${SUPABASE_KEY}`
-};
-const api = (path, opts = {}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: { ...headers, ...(opts.extraHeaders||{}) }, ...opts });
+const headers = { 'Content-Type':'application/json', 'apikey':SUPABASE_KEY, 'Authorization':`Bearer ${SUPABASE_KEY}` };
+const api = (path, opts={}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers:{ ...headers, ...(opts.extraHeaders||{}) }, ...opts });
 
-let token = null, sessionId = null, watchId = null;
-let trackInterval = null, timerInterval = null;
-let sessionStart = null, lastPosition = null, lastTimestamp = null;
+// ── Estado ──
+let token = null, sessionId = null;
+let watchId = null, timerInterval = null, trackInterval = null;
+let sessionStart = null;
 let pontos = 0, timelineItems = [];
-let swRegistration = null; // Service Worker
-let swAtivo       = false;  // true quando SW está controlando gravação
-let lastSentLat   = null;   // última lat gravada (deduplicação)
-let lastSentLng   = null;   // última lng gravada
-let lastSentTs    = 0;      // timestamp do último envio ao banco
-const MIN_INTERVAL_MS  = 10000; // intervalo mínimo entre gravações (ms)
-const MIN_DISTANCE_M   = 5;     // distância mínima para novo registro (m)
+let lastSentLat = null, lastSentLng = null;
+let currentSpeed = 0; // velocidade atual em km/h (atualizada pelo watchPosition)
 
-// ── Registro do Service Worker ──
-async function registrarSW() {
-  if (!('serviceWorker' in navigator)) return;
-  try {
-    swRegistration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
-
-    // Recebe mensagens do SW
-    navigator.serviceWorker.addEventListener('message', async (e) => {
-      const { type, count } = e.data || {};
-
-      // SW confirmou que está ativo — página para de gravar diretamente
-      if (type === 'SW_READY') {
-        swAtivo = true;
-      }
-
-      // SW parou — página volta a gravar diretamente
-      if (type === 'SW_STOPPED') {
-        swAtivo = false;
-      }
-
-      // SW pediu posição GPS para gravar em background
-      if (type === 'REQUEST_POSITION' && sessionId) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            // Calcula velocidade local para mandar junto
-            const now = Date.now();
-            let speed = 0;
-            if (lastPosition && lastTimestamp) {
-              speed = calcSpeed(lastPosition, lastTimestamp, pos.coords, now);
-            } else if (pos.coords.speed != null && pos.coords.speed >= 0) {
-              speed = pos.coords.speed * 3.6;
-            }
-            navigator.serviceWorker.controller?.postMessage({
-              type: 'POSITION_RESPONSE',
-              payload: {
-                latitude:  pos.coords.latitude,
-                longitude: pos.coords.longitude,
-                speed:     speed,
-                timestamp: now
-              }
-            });
-            // Atualiza deduplicação local para não regravrar quando voltar ao foco
-            lastSentLat = pos.coords.latitude;
-            lastSentLng = pos.coords.longitude;
-            lastSentTs  = now;
-          },
-          () => {}, // GPS indisponível — SW vai tentar no próximo ciclo
-          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-        );
-      }
-
-      // SW enviou pontos acumulados em background
-      if (type === 'FLUSH_DONE' && count > 0) {
-        pontos += count;
-        document.getElementById('stat-pts').textContent = pontos;
-        addTimeline('↩', `${count} ponto(s) recuperado(s) do background`, new Date().toLocaleTimeString('pt-BR'));
-      }
-    });
-  } catch(e) {
-    console.warn('SW não registrado:', e);
-  }
-}
-
-function iniciarSWTracking() {
-  const controller = navigator.serviceWorker?.controller;
-  if (!controller) return false;
-  controller.postMessage({
-    type: 'START_TRACKING',
-    payload: {
-      sessionId:   sessionId,
-      supabaseUrl: 'https://xijwxqyvxoyhjekhkrfm.supabase.co',
-      supabaseKey: 'sb_publishable_o-FGHOuSygRdquiMZZ922g_WSDk_B3Z'
-    }
-  });
-  return true;
-}
-
-function pararSWTracking() {
-  navigator.serviceWorker?.controller?.postMessage({ type: 'STOP_TRACKING' });
-}
-
-// ── Wake Lock (mantém tela ligada) ──
-// No iOS Safari, a única forma confiável é o usuário manter a tela acesa manualmente.
-// A Wake Lock API funciona no Android Chrome e iOS 16.4+.
-// Quando não suportada, orientamos o usuário via UI.
+// ── Wake Lock ──
 let wakeLock = null;
-
+async function ativarWakeLock() {
+  if (!('wakeLock' in navigator)) { updateWakeLockBadge(false); return; }
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; updateWakeLockBadge(false); });
+    updateWakeLockBadge(true);
+  } catch(e) { updateWakeLockBadge(false); }
+}
+function desativarWakeLock() {
+  if (wakeLock) { try { wakeLock.release(); } catch(e){} wakeLock = null; }
+  updateWakeLockBadge(false);
+}
 function updateWakeLockBadge(active) {
   const badge = document.getElementById('wakelock-badge');
   const label = document.getElementById('wakelock-label');
@@ -738,103 +658,132 @@ function updateWakeLockBadge(active) {
   badge.className = 'wakelock-badge ' + (active ? 'ok' : 'off');
   label.textContent = active ? 'Tela protegida' : 'Mantenha a tela ligada';
 }
-
-async function ativarWakeLock() {
-  if ('wakeLock' in navigator) {
-    try {
-      wakeLock = await navigator.wakeLock.request('screen');
-      wakeLock.addEventListener('release', () => {
-        wakeLock = null;
-        updateWakeLockBadge(false);
-      });
-      updateWakeLockBadge(true);
-      return;
-    } catch(e) { /* não suportado ou permissão negada */ }
-  }
-  // Sem suporte — badge mostra instrução ao usuário
-  updateWakeLockBadge(false);
-}
-
-function desativarWakeLock() {
-  if (wakeLock) { try { wakeLock.release(); } catch(e){} wakeLock = null; }
-  updateWakeLockBadge(false);
-}
-
-// Reativa Wake Lock e avisa SW quando usuário volta para a aba
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState === 'visible' && sessionId) {
-    addTimeline('↩', 'Voltou para a tela', new Date().toLocaleTimeString('pt-BR'));
     await ativarWakeLock();
-    // Avisa SW para fazer flush dos pontos acumulados em background
-    navigator.serviceWorker?.controller?.postMessage({ type: 'PAGE_VISIBLE' });
+    addTimeline('↩', 'Voltou para a tela', fmtHora());
   }
 });
 
-function getToken() {
-  return new URLSearchParams(window.location.search).get('token');
+// ── Helpers ──
+function fmtHora() { return new Date().toLocaleTimeString('pt-BR', { timeZone: TZ }); }
+function fmtHoraMin(d) { return d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', timeZone: TZ }); }
+function calcDuration(start, end) {
+  const s = Math.floor((end - start) / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m ${ss}s`;
 }
 
+// Distância em metros (Haversine)
+function distMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000, toRad = x => x * Math.PI / 180;
+  const dLat = toRad(lat2-lat1), dLng = toRad(lng2-lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ── UI ──
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-
 function toggleBtn(checked) {
-  const btn = document.getElementById('btn-iniciar');
-  btn.className = checked ? 'btn btn-primary' : 'btn btn-disabled';
+  document.getElementById('btn-iniciar').className = checked ? 'btn btn-primary' : 'btn btn-disabled';
 }
-
-function showError(id, msg) {
-  const el = document.getElementById(id);
-  el.textContent = msg; el.style.display = 'block';
-}
-function hideError(id) { document.getElementById(id).style.display = 'none'; }
-
-function formatTime(date) { return date.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }); }
-function formatTimeHMS(date) { return date.toLocaleTimeString('pt-BR'); }
-
-function calcDuration(start, end) {
-  const diff = Math.floor((end - start) / 1000);
-  const h = Math.floor(diff / 3600);
-  const m = Math.floor((diff % 3600) / 60);
-  const s = diff % 60;
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m ${s}s`;
-}
-
-function calcSpeed(pos1, time1, pos2coords, time2) {
-  // Prefere velocidade nativa do SO (já filtrada, sem ruído GPS)
-  if (pos2coords.speed != null && pos2coords.speed >= 0) {
-    return pos2coords.speed * 3.6; // m/s → km/h
-  }
-  // Fallback: Haversine entre dois pontos
-  const R = 6371000;
-  const lat1 = pos1.latitude  * Math.PI / 180;
-  const lat2 = pos2coords.latitude  * Math.PI / 180;
-  const dLat = (pos2coords.latitude  - pos1.latitude)  * Math.PI / 180;
-  const dLon = (pos2coords.longitude - pos1.longitude) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
-  const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  const dt = (time2 - time1) / 1000;
-  if (dt < 1) return 0; // intervalo muito curto — ignora
-  const v = (d / dt) * 3.6;
-  // Limita spikes de ruído GPS (>120 km/h a pé = ruído)
-  return v > 120 ? 0 : v;
-}
-
+function showError(id, msg) { const el=document.getElementById(id); el.textContent=msg; el.style.display='block'; }
+function hideError(id) { document.getElementById(id).style.display='none'; }
 function addTimeline(icon, title, time) {
   timelineItems.unshift({ icon, title, time });
   if (timelineItems.length > 5) timelineItems.pop();
-  document.getElementById('timeline').innerHTML = timelineItems.map(item => `
-    <div class="timeline-item">
-      <div class="timeline-icon">${item.icon}</div>
+  document.getElementById('timeline').innerHTML = timelineItems.map(i =>
+    `<div class="timeline-item">
+      <div class="timeline-icon">${i.icon}</div>
       <div class="timeline-text">
-        <div class="timeline-title">${item.title}</div>
-        <div class="timeline-time">${item.time}</div>
+        <div class="timeline-title">${i.title}</div>
+        <div class="timeline-time">${i.time}</div>
       </div>
     </div>`).join('');
 }
 
+// ── watchPosition: atualiza velocidade na UI em tempo real ──
+// NÃO grava no banco — só mantém currentSpeed atualizado
+function iniciarWatchVelocidade() {
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      // Velocidade nativa do SO em m/s → km/h
+      // É a fonte mais confiável: já filtrada pelo chipset GPS
+      if (pos.coords.speed != null && pos.coords.speed >= 0) {
+        currentSpeed = Math.round(pos.coords.speed * 3.6);
+      }
+      document.getElementById('stat-vel').textContent = currentSpeed;
+    },
+    () => {}, // erros pontuais ignorados — o setInterval vai tentar novamente
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+}
+
+// ── setInterval 10s: grava ponto no banco se houve deslocamento ──
+function iniciarGravacao() {
+  trackInterval = setInterval(() => {
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        // Só grava se moveu mais de 5 metros desde o último ponto salvo
+        if (lastSentLat !== null) {
+          const dist = distMeters(lastSentLat, lastSentLng, lat, lng);
+          if (dist < 5) return; // parado — não grava
+        }
+
+        // Velocidade: usa nativa do SO se disponível, senão currentSpeed
+        const speed = pos.coords.speed != null
+          ? Math.round(pos.coords.speed * 3.6)
+          : currentSpeed;
+
+        try {
+          await api('locations', {
+            method: 'POST',
+            body: JSON.stringify({
+              session_id: sessionId,
+              latitude: lat, longitude: lng,
+              speed: speed,
+              timestamp: new Date().toISOString()
+            })
+          });
+          lastSentLat = lat; lastSentLng = lng;
+          pontos++;
+          document.getElementById('stat-pts').textContent = pontos;
+          document.getElementById('stat-upd').textContent = fmtHora();
+          hideError('error-gps');
+          if (speed > 30) {
+            addTimeline('↑', `Velocidade: ${speed} km/h`, fmtHora());
+          } else {
+            addTimeline('◎', 'Ponto registrado', fmtHora());
+          }
+        } catch(e) {
+          showError('error-gps', 'Falha ao enviar localização. Tentando novamente…');
+        }
+      },
+      () => { showError('error-gps', 'GPS indisponível…'); },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 }
+    );
+  }, 10000);
+}
+
+// ── Timer de duração ──
+function iniciarTimer() {
+  timerInterval = setInterval(() => {
+    if (!sessionStart) return;
+    const diff = Math.floor((Date.now() - sessionStart) / 1000);
+    const m = Math.floor(diff / 60).toString().padStart(2,'0');
+    const s = (diff % 60).toString().padStart(2,'0');
+    document.getElementById('stat-tempo').textContent = `${m}:${s}`;
+  }, 1000);
+}
+
+// ── Check-in ──
 async function iniciarAcesso() {
   const btn = document.getElementById('btn-iniciar');
   btn.innerHTML = 'Aguardando GPS… <span class="loader"></span>';
@@ -842,7 +791,7 @@ async function iniciarAcesso() {
   hideError('error-msg');
 
   if (!navigator.geolocation) {
-    showError('error-msg', 'Seu navegador não suporta geolocalização. Tente no Chrome ou Safari.');
+    showError('error-msg', 'Seu navegador não suporta geolocalização.');
     btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary'; return;
   }
 
@@ -853,143 +802,54 @@ async function iniciarAcesso() {
         extraHeaders: { 'Prefer': 'return=representation' },
         body: JSON.stringify({
           token, status: 'active',
-          latitude_start: pos.coords.latitude,
+          latitude_start:  pos.coords.latitude,
           longitude_start: pos.coords.longitude
         })
       });
-      if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || 'Erro ao criar sessão'); }
+      if (!resp.ok) { const e = await resp.json(); throw new Error(e.message||'Erro ao criar sessão'); }
       const data = await resp.json();
-      sessionId = data[0].id;
+      sessionId    = data[0].id;
       sessionStart = new Date();
-      const firstSpeed = pos.coords.speed != null ? pos.coords.speed * 3.6 : 0;
-      await sendLocationDirect(pos.coords.latitude, pos.coords.longitude, firstSpeed, pos.coords.timestamp || Date.now());
-      lastPosition = pos.coords; lastTimestamp = Date.now();
+
+      // Grava ponto inicial
+      const initSpeed = pos.coords.speed != null ? Math.round(pos.coords.speed * 3.6) : 0;
+      await api('locations', {
+        method: 'POST',
+        body: JSON.stringify({
+          session_id: sessionId,
+          latitude: pos.coords.latitude, longitude: pos.coords.longitude,
+          speed: initSpeed, timestamp: new Date().toISOString()
+        })
+      });
+      lastSentLat = pos.coords.latitude;
+      lastSentLng = pos.coords.longitude;
+      pontos = 1;
+
       showScreen('screen-ativo');
-      document.getElementById('ativo-inicio').textContent = `Iniciado às ${formatTime(sessionStart)}`;
-      addTimeline('✓', 'Check-in realizado', formatTimeHMS(sessionStart));
+      document.getElementById('ativo-inicio').textContent = `Iniciado às ${fmtHoraMin(sessionStart)}`;
+      document.getElementById('stat-pts').textContent = pontos;
+      addTimeline('✓', 'Check-in realizado', fmtHora());
+
       await ativarWakeLock();
-      iniciarRastreamento();
-      // Inicia SW tracking em paralelo (background no Android)
-      // Aguarda SW estar pronto (pode precisar de um ciclo de event loop)
-      setTimeout(() => iniciarSWTracking(), 500);
+      iniciarWatchVelocidade();
+      iniciarGravacao();
+      iniciarTimer();
+
     } catch(e) {
       showError('error-msg', `Erro: ${e.message}`);
       btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary';
     }
   }, (err) => {
     let msg = 'Não foi possível obter sua localização. ';
-    if (err.code === 1) msg += 'Permissão negada. Verifique as configurações do seu celular.';
-    else if (err.code === 2) msg += 'Sinal GPS indisponível. Tente em local aberto.';
+    if (err.code === 1) msg += 'Permissão negada.';
+    else if (err.code === 2) msg += 'GPS indisponível.';
     else msg += 'Verifique se o GPS está ativado.';
     showError('error-msg', msg);
     btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary';
   }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
 }
 
-// Última coordenada enviada ao banco (para deduplicação)
-
-// Distância mínima em metros para gerar novo registro
-
-// Haversine simplificado — retorna distância em metros entre dois pontos
-function distanceMeters(lat1, lng1, lat2, lng2) {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 +
-            Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
-            Math.sin(dLng/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-// (variáveis de rastreamento declaradas no topo)
-
-// Grava ponto diretamente no banco (usado quando SW não está disponível)
-async function sendLocationDirect(lat, lng, speed, ts) {
-  if (lastSentLat !== null && lastSentLng !== null) {
-    const dist = distanceMeters(lastSentLat, lastSentLng, lat, lng);
-    if (dist < MIN_DISTANCE_M) return; // sem movimento — não grava
-  }
-  try {
-    await api('locations', {
-      method: 'POST',
-      body: JSON.stringify({ session_id: sessionId, latitude: lat, longitude: lng, speed, timestamp: new Date(ts).toISOString() })
-    });
-    lastSentLat = lat;
-    lastSentLng = lng;
-    pontos++;
-    document.getElementById('stat-pts').textContent = pontos;
-    document.getElementById('stat-upd').textContent =
-      new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    hideError('error-gps');
-  } catch(e) {
-    showError('error-gps', 'Falha ao enviar localização. Tentando novamente…');
-  }
-}
-
-// Atualiza UI de velocidade e timeline — sempre, independente de gravação
-function atualizarUI(speed, ts) {
-  document.getElementById('stat-vel').textContent = Math.round(speed);
-  document.getElementById('stat-upd').textContent =
-    new Date(ts).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  if (speed > 30) {
-    addTimeline('↑', `Velocidade elevada: ${Math.round(speed)} km/h`, new Date(ts).toLocaleTimeString('pt-BR'));
-  } else if (speed > 0) {
-    addTimeline('◎', 'Em movimento', new Date(ts).toLocaleTimeString('pt-BR'));
-  } else {
-    addTimeline('◎', 'Posição atualizada', new Date(ts).toLocaleTimeString('pt-BR'));
-  }
-}
-
-function iniciarRastreamento() {
-  // Timer de duração — atualiza UI a cada segundo
-  timerInterval = setInterval(() => {
-    if (!sessionStart) return;
-    const diff = Math.floor((Date.now() - sessionStart) / 1000);
-    const m = Math.floor(diff / 60).toString().padStart(2, '0');
-    const s = (diff % 60).toString().padStart(2, '0');
-    document.getElementById('stat-tempo').textContent = `${m}:${s}`;
-  }, 1000);
-
-  // watchPosition: entrega posições contínuas do SO
-  // — Sempre atualiza UI de velocidade (sem throttle)
-  // — Só grava no banco se SW não estiver ativo (fallback)
-  watchId = navigator.geolocation.watchPosition(
-    (pos) => {
-      const now  = Date.now();
-      let speed = 0;
-
-      // Calcula velocidade — prefere speed nativa do SO, fallback Haversine
-      if (lastPosition && lastTimestamp) {
-        speed = calcSpeed(lastPosition, lastTimestamp, pos.coords, now);
-      } else if (pos.coords.speed != null && pos.coords.speed >= 0) {
-        speed = pos.coords.speed * 3.6;
-      }
-
-      // Atualiza UI sempre — velocidade, timeline, horário
-      atualizarUI(speed, now);
-
-      // Atualiza posição local para próximo cálculo de velocidade
-      lastPosition  = pos.coords;
-      lastTimestamp = now;
-
-      // Grava no banco SOMENTE se SW não está ativo e passou o intervalo mínimo
-      if (!swAtivo && (now - lastSentTs) >= MIN_INTERVAL_MS) {
-        lastSentTs = now;
-        sendLocationDirect(pos.coords.latitude, pos.coords.longitude, speed, now);
-      }
-    },
-    (err) => {
-      if (err.code === 1) {
-        showError('error-gps', 'Permissão de localização negada. Verifique as configurações.');
-        encerrar();
-      } else {
-        showError('error-gps', 'GPS temporariamente indisponível…');
-      }
-    },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-  );
-}
-
+// ── Encerramento ──
 async function confirmarEncerramento() {
   if (!confirm('Confirma o encerramento da visita?')) return;
   await encerrar();
@@ -997,8 +857,8 @@ async function confirmarEncerramento() {
 
 async function encerrar() {
   clearInterval(timerInterval);
-  if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
-  pararSWTracking();
+  clearInterval(trackInterval);
+  if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
   desativarWakeLock();
   const fim = new Date();
   try {
@@ -1007,18 +867,19 @@ async function encerrar() {
       body: JSON.stringify({ status: 'finished', ended_at: fim.toISOString() })
     });
   } catch(e) {}
-  document.getElementById('res-inicio').textContent = formatTime(sessionStart);
-  document.getElementById('res-fim').textContent = formatTime(fim);
+  document.getElementById('res-inicio').textContent  = fmtHoraMin(sessionStart);
+  document.getElementById('res-fim').textContent     = fmtHoraMin(fim);
   document.getElementById('res-duracao').textContent = calcDuration(sessionStart, fim);
-  document.getElementById('res-pts').textContent = pontos;
+  document.getElementById('res-pts').textContent     = pontos;
   showScreen('screen-encerrado');
 }
 
+// ── Boot ──
+function getToken() { return new URLSearchParams(window.location.search).get('token'); }
 window.onload = () => {
-  registrarSW();
   token = getToken();
   if (!token) {
-    token = 'DEMO-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+    token = 'DEMO-' + Math.random().toString(36).substr(2,6).toUpperCase();
     const url = new URL(window.location.href);
     url.searchParams.set('token', token);
     window.history.replaceState({}, '', url);
