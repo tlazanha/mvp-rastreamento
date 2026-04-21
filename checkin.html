@@ -559,7 +559,7 @@
         </svg>
       </div>
       <div class="tela-aviso-text">
-        <strong>Mantenha esta tela aberta</strong> e a tela do celular ligada durante toda a visita. No iPhone, não minimize o Safari.
+        <strong>Mantenha esta tela aberta</strong> e a tela do celular ligada durante toda a visita.<br><span style="font-size:11.5px;opacity:0.8;">Android: permita localização <em>o tempo todo</em> para rastrear em background. iPhone: não minimize o Safari.</span>
         <br>
         <span class="wakelock-badge off" id="wakelock-badge">
           <span class="wakelock-badge-dot"></span>
@@ -836,7 +836,12 @@ async function sendLocation(lat, lng, speed, ts) {
   }
 }
 
+// Intervalo mínimo entre envios (ms) — evita flood quando o SO entrega posições rápido
+const MIN_INTERVAL_MS = 10000;
+let lastSentTs = 0;
+
 function iniciarRastreamento() {
+  // Timer de duração — só atualiza UI, independente do GPS
   timerInterval = setInterval(() => {
     if (!sessionStart) return;
     const diff = Math.floor((Date.now() - sessionStart) / 1000);
@@ -845,26 +850,51 @@ function iniciarRastreamento() {
     document.getElementById('stat-tempo').textContent = `${m}:${s}`;
   }, 1000);
 
-  trackInterval = setInterval(() => {
-    navigator.geolocation.getCurrentPosition((pos) => {
+  // watchPosition: listener nativo — sobrevive a troca de aba no Android Chrome.
+  // O SO continua entregando posições mesmo em background; o JS as processa
+  // quando a aba voltar ao foco (fila de callbacks pendentes).
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => {
       const now = Date.now();
+
+      // Throttle por tempo: ignora se não passou MIN_INTERVAL_MS desde o último envio
+      const elapsed = now - lastSentTs;
+      if (elapsed < MIN_INTERVAL_MS) return;
+
       let speed = 0;
       if (lastPosition && lastTimestamp) {
         speed = calcSpeed(lastPosition, lastTimestamp, pos.coords, now);
         speed = Math.min(speed, 200);
       }
+
       document.getElementById('stat-vel').textContent = Math.round(speed);
+
       if (speed > 30) {
         addTimeline('↑', `Velocidade elevada: ${Math.round(speed)} km/h`, new Date().toLocaleTimeString('pt-BR'));
       } else {
         addTimeline('◎', 'Posição atualizada', new Date().toLocaleTimeString('pt-BR'));
       }
+
+      lastSentTs = now;
       sendLocation(pos.coords.latitude, pos.coords.longitude, speed, now);
-      lastPosition = pos.coords; lastTimestamp = now;
-    }, () => {
-      showError('error-gps', 'GPS temporariamente indisponível…');
-    }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 });
-  }, 10000);
+      lastPosition = pos.coords;
+      lastTimestamp = now;
+    },
+    (err) => {
+      // PERMISSION_DENIED = sem recuperação; outros = temporário
+      if (err.code === 1) {
+        showError('error-gps', 'Permissão de localização negada. Verifique as configurações.');
+        encerrar();
+      } else {
+        showError('error-gps', 'GPS temporariamente indisponível…');
+      }
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0        // sempre posição fresca — sem cache
+    }
+  );
 }
 
 async function confirmarEncerramento() {
@@ -873,8 +903,8 @@ async function confirmarEncerramento() {
 }
 
 async function encerrar() {
-  clearInterval(trackInterval); clearInterval(timerInterval);
-  if (watchId) navigator.geolocation.clearWatch(watchId);
+  clearInterval(timerInterval);
+  if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
   desativarWakeLock();
   const fim = new Date();
   try {
