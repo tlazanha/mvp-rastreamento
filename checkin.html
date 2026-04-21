@@ -405,6 +405,57 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .spacer { flex: 1; }
+
+  /* ── Aviso de tela ativa ── */
+  .tela-aviso {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: oklch(96% 0.04 72);
+    border: 1px solid oklch(88% 0.08 72);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .tela-aviso-icon {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: oklch(68% 0.14 72);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .tela-aviso-icon svg { width: 14px; height: 14px; }
+  .tela-aviso-text { font-size: 12.5px; color: oklch(42% 0.14 72); line-height: 1.55; font-weight: 500; }
+  .tela-aviso-text strong { font-weight: 700; }
+
+  /* ── Badge de status do Wake Lock ── */
+  .wakelock-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; padding: 3px 8px; border-radius: 10px;
+    margin-top: 6px;
+  }
+  .wakelock-badge.ok  { background: var(--green-bg); color: var(--green-text); }
+  .wakelock-badge.off { background: #f1f0ed; color: #9ca3af; }
+  .wakelock-badge-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .wakelock-badge.ok  .wakelock-badge-dot { background: var(--green); animation: ring 2s infinite; }
+  .wakelock-badge.off .wakelock-badge-dot { background: #d1d5db; }
+  /* ── Aviso de tela ativa ── */
+  .tela-aviso {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: oklch(96% 0.04 72); border: 1px solid oklch(88% 0.08 72);
+    border-radius: 12px; padding: 12px 14px;
+  }
+  .tela-aviso-icon { width: 28px; height: 28px; border-radius: 8px; background: oklch(68% 0.14 72); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .tela-aviso-icon svg { width: 14px; height: 14px; }
+  .tela-aviso-text { font-size: 12.5px; color: oklch(42% 0.14 72); line-height: 1.55; font-weight: 500; }
+  .tela-aviso-text strong { font-weight: 700; }
+  .wakelock-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 8px; border-radius: 10px; margin-top: 6px; }
+  .wakelock-badge.ok  { background: var(--green-bg); color: var(--green-text); }
+  .wakelock-badge.off { background: #f1f0ed; color: #9ca3af; }
+  .wakelock-badge-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .wakelock-badge.ok  .wakelock-badge-dot { background: var(--green); animation: ring 2s infinite; }
+  .wakelock-badge.off .wakelock-badge-dot { background: #d1d5db; }
+
 </style>
 </head>
 <body>
@@ -499,6 +550,24 @@
 
     <div class="error-msg" id="error-gps"></div>
 
+    <!-- Aviso de tela ativa -->
+    <div class="tela-aviso">
+      <div class="tela-aviso-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="5" y="2" width="14" height="20" rx="2"/>
+          <circle cx="12" cy="18" r="1" fill="#fff" stroke="none"/>
+        </svg>
+      </div>
+      <div class="tela-aviso-text">
+        <strong>Mantenha esta tela aberta</strong> durante toda a visita. Sair desta tela pode interromper o rastreamento.
+        <br>
+        <span class="wakelock-badge off" id="wakelock-badge">
+          <span class="wakelock-badge-dot"></span>
+          <span id="wakelock-label">Tela livre</span>
+        </span>
+      </div>
+    </div>
+
     <div class="spacer"></div>
 
     <button class="btn btn-danger" onclick="confirmarEncerramento()">
@@ -567,6 +636,86 @@ let token = null, sessionId = null, watchId = null;
 let trackInterval = null, timerInterval = null;
 let sessionStart = null, lastPosition = null, lastTimestamp = null;
 let pontos = 0, timelineItems = [];
+
+// ── Wake Lock + noSleep ──
+let wakeLock = null;
+
+// noSleep: vídeo 1×1px transparente em loop — engana o iOS Safari
+const noSleepVideo = document.createElement('video');
+noSleepVideo.setAttribute('playsinline', '');
+noSleepVideo.setAttribute('muted', '');
+noSleepVideo.setAttribute('loop', '');
+noSleepVideo.style.cssText = 'position:fixed;top:-1px;left:-1px;width:1px;height:1px;opacity:0;pointer-events:none';
+// MP4 base64 mínimo (1×1px preto, 1 frame) — sem dependência externa
+noSleepVideo.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAA' +
+  'JFtZGF0AAACoAYF//+c3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE2' +
+  'NCAtIEguMjY0L01QRUctNCBBVkMgY29kZWMgLSBDb3B5bGVmdCAyMDAzLTIw' +
+  'MjMgLSBodHRwOi8vd3d3LnZpZGVvbGFuLm9yZy94MjY0Lmh0bWwgLSBvcHRp' +
+  'b25zOiBjYWJhYz0xIHJlZj0zIGRlYmxvY2s9MTowOjAgYW5hbHlzZT0weDM6' +
+  'MHgxMTMgbWU9aGV4IHN1Ym1lPTcgcHN5PTEgcHN5X3JkPTEuMDA6MC4wMCBt' +
+  'aXhlZF9yZWY9MSBtZV9yYW5nZT0xNiBjaHJvbWFfbWU9MSB0cmVsbGlzPTEg' +
+  'OHg4ZGN0PTEgY3FtPTAgZGVhZHpvbmU9MjEsMTEgZmFzdF9wc2tpcD0xIGNo' +
+  'cm9tYV9xcF9vZmZzZXQ9LTIgdGhyZWFkcz02IGxvb2thaGVhZF90aHJlYWRz' +
+  'PTEgc2xpY2VkX3RocmVhZHM9MCBucj0wIGRlY2ltYXRlPTEgaW50ZXJsYWNl' +
+  'ZD0wIGJsdXJheV9jb21wYXQ9MCBjb25zdHJhaW5lZF9pbnRyYT0wIGJmcmFt' +
+  'ZXM9MyBiX3B5cmFtaWQ9MiBiX2FkYXB0PTEgYl9iaWFzPTAgZGlyZWN0PTEg' +
+  'd2VpZ2h0Yj0xIG9wZW5fZ29wPTAgd2VpZ2h0cD0yIGtleWludD0yNTAga2V5' +
+  'aW50X21pbj0yNSBzY2VuZWN1dD00MCBpbnRyYV9yZWZyZXNoPTAgcmNfbG9v' +
+  'a2FoZWFkPTQwIHJjPWNyZiBtYnRyZWU9MSBjcmY9MjMuMCBxY29tcD0wLjYw' +
+  'IHFwbWluPTAgcXBtYXg9NjkgcXBzdGVwPTQgaXBfcmF0aW89MS40MCBhcT0x' +
+  'OjEuMDAAgAAAAA9liIQAM//+92yyfgU3IAA=';
+
+function updateWakeLockBadge(active) {
+  const badge = document.getElementById('wakelock-badge');
+  const label = document.getElementById('wakelock-label');
+  if (!badge || !label) return;
+  badge.className = 'wakelock-badge ' + (active ? 'ok' : 'off');
+  label.textContent = active ? 'Tela protegida' : 'Tela livre';
+}
+
+async function ativarWakeLock() {
+  // Tenta Wake Lock API (Android Chrome, iOS 16.4+)
+  if ('wakeLock' in navigator) {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => {
+        wakeLock = null;
+        updateWakeLockBadge(false);
+      });
+      updateWakeLockBadge(true);
+    } catch(e) {
+      // Falhou — cai no noSleep
+      ativarNoSleep();
+    }
+  } else {
+    // Sem suporte — usa noSleep (iOS Safari < 16.4)
+    ativarNoSleep();
+  }
+}
+
+function ativarNoSleep() {
+  document.body.appendChild(noSleepVideo);
+  noSleepVideo.play().then(() => {
+    updateWakeLockBadge(true);
+  }).catch(() => {
+    // Autoplay bloqueado — não há muito o que fazer
+    updateWakeLockBadge(false);
+  });
+}
+
+function desativarWakeLock() {
+  if (wakeLock) { wakeLock.release(); wakeLock = null; }
+  if (!noSleepVideo.paused) { noSleepVideo.pause(); noSleepVideo.remove(); }
+  updateWakeLockBadge(false);
+}
+
+// Reativa wake lock quando o usuário volta para a aba (visibilitychange)
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && sessionId) {
+    addTimeline('↩', 'Tela reativada', new Date().toLocaleTimeString('pt-BR'));
+    await ativarWakeLock();
+  }
+});
 
 function getToken() {
   return new URLSearchParams(window.location.search).get('token');
@@ -662,6 +811,7 @@ async function iniciarAcesso() {
       showScreen('screen-ativo');
       document.getElementById('ativo-inicio').textContent = `Iniciado às ${formatTime(sessionStart)}`;
       addTimeline('✓', 'Check-in realizado', formatTimeHMS(sessionStart));
+      await ativarWakeLock();
       iniciarRastreamento();
     } catch(e) {
       showError('error-msg', `Erro: ${e.message}`);
@@ -731,6 +881,7 @@ async function confirmarEncerramento() {
 async function encerrar() {
   clearInterval(trackInterval); clearInterval(timerInterval);
   if (watchId) navigator.geolocation.clearWatch(watchId);
+  desativarWakeLock();
   const fim = new Date();
   try {
     await api(`sessions?id=eq.${sessionId}`, {
