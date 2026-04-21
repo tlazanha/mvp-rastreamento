@@ -78,6 +78,16 @@
   .btn-copiar { width: 100%; margin-top: 6px; padding: 9px; background: var(--green); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: var(--sans); cursor: pointer; display: none; transition: filter 0.15s; }
   .btn-copiar:hover { filter: brightness(1.1); }
 
+  /* Botão apagar histórico */
+  .btn-apagar-hist {
+    width: 100%; margin-top: 10px; padding: 9px 12px;
+    background: rgba(201,64,64,0.12); border: 1px solid rgba(201,64,64,0.25);
+    border-radius: 8px; color: #f87171; font-size: 12px; font-weight: 600;
+    font-family: var(--sans); cursor: pointer; transition: background 0.15s;
+    letter-spacing: 0.01em;
+  }
+  .btn-apagar-hist:hover { background: rgba(201,64,64,0.22); }
+
   /* Lista de sessões — scrollável */
   .sessions-section { flex: 1; overflow-y: auto; padding: 0 24px 24px; min-height: 0; }
   .sessions-section::-webkit-scrollbar { width: 3px; }
@@ -190,6 +200,32 @@
   .custom-popup-row { font-size: 11.5px; color: var(--text-2); font-family: var(--mono); margin-top: 2px; }
   .custom-popup-row span { font-weight: 600; color: var(--text); }
 
+  /* ── Modal de confirmação ── */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 2000;
+    background: rgba(0,0,0,0.45);
+    display: none; align-items: center; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-box {
+    background: var(--surface); border-radius: 16px;
+    border: 1px solid var(--border-mid);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.18);
+    padding: 28px; width: 320px; max-width: calc(100vw - 48px);
+    animation: modal-in 0.18s ease;
+  }
+  @keyframes modal-in { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
+  .modal-icon { width: 44px; height: 44px; border-radius: 12px; background: #fef2f2; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+  .modal-icon svg { width: 22px; height: 22px; }
+  .modal-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .modal-desc { font-size: 13px; color: var(--text-2); line-height: 1.55; margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 8px; }
+  .modal-btn { flex: 1; padding: 10px; border-radius: 9px; font-size: 13px; font-weight: 600; font-family: var(--sans); cursor: pointer; border: none; transition: filter 0.15s; }
+  .modal-btn-cancel { background: #f3f2ef; color: var(--text-2); }
+  .modal-btn-cancel:hover { filter: brightness(0.95); }
+  .modal-btn-confirm { background: var(--red); color: #fff; }
+  .modal-btn-confirm:hover { filter: brightness(1.08); }
+
   /* Marcador customizado — ativo */
   .marker-pin {
     width: 32px; height: 32px; border-radius: 50% 50% 50% 0;
@@ -280,8 +316,13 @@
       </div>
       <div id="list-ativas"><div class="empty-sidebar">Carregando…</div></div>
 
-      <div class="sessions-label" style="margin-top:20px;">Histórico hoje</div>
+      <div class="sessions-label" style="margin-top:20px;">
+        Histórico hoje
+      </div>
       <div id="list-historico"><div class="empty-sidebar">Carregando…</div></div>
+      <button class="btn-apagar-hist" id="btn-apagar-hist" onclick="showDeleteModal()" style="display:none">
+        Apagar histórico do dia
+      </button>
     </div>
 
     <div class="sidebar-footer">
@@ -338,6 +379,23 @@
       <div class="detail-locations" id="detail-locations"></div>
     </div>
   </main>
+</div>
+
+<!-- ── Modal de confirmação ── -->
+<div class="modal-overlay" id="modal-overlay" onclick="hideDeleteModal(event)">
+  <div class="modal-box">
+    <div class="modal-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+      </svg>
+    </div>
+    <div class="modal-title">Apagar histórico do dia?</div>
+    <div class="modal-desc">Todas as sessões encerradas de hoje e seus pontos de localização serão removidos permanentemente. Esta ação não pode ser desfeita.</div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-cancel" onclick="hideDeleteModal()">Cancelar</button>
+      <button class="modal-btn modal-btn-confirm" id="btn-confirm-delete" onclick="deleteHistory()">Apagar tudo</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -514,7 +572,7 @@ async function selectHistory(session) {
       const spd = Math.round(l.speed||0);
       return `<div class="detail-loc-row">
         <span class="detail-loc-idx">${locs.length - i}</span>
-        <span class="detail-loc-time">${new Date(l.timestamp).toLocaleTimeString('pt-BR')}</span>
+        <span class="detail-loc-time">${formatTimeFull(l.timestamp)}</span>
         <span class="detail-loc-spd ${spd > 30 ? 'spd-high' : 'spd-ok'}">${spd} km/h</span>
       </div>`;
     }).join('');
@@ -593,7 +651,7 @@ async function selectSession(id, token) {
       const spd = Math.round(l.speed||0);
       return `<div class="detail-loc-row">
         <span class="detail-loc-idx">${locs.length - i}</span>
-        <span class="detail-loc-time">${new Date(l.timestamp).toLocaleTimeString('pt-BR')}</span>
+        <span class="detail-loc-time">${formatTimeFull(l.timestamp)}</span>
         <span class="detail-loc-spd ${spd > 30 ? 'spd-high' : 'spd-ok'}">${spd} km/h</span>
       </div>`;
     }).join('');
@@ -626,6 +684,10 @@ function renderSidebar(ativas, historico) {
 
   renderList('list-ativas', ativas, true);
   renderList('list-historico', historico, false);
+
+  // Mostra botão apagar só se houver histórico
+  const btnApagar = document.getElementById('btn-apagar-hist');
+  if (btnApagar) btnApagar.style.display = histArr.length > 0 ? 'block' : 'none';
 }
 
 // Cache de objetos de sessão para acesso seguro (evita JSON inline no onclick)
@@ -756,15 +818,70 @@ async function copiarLink() {
 }
 
 // ── Helpers ──
+const TZ = 'America/Sao_Paulo';
 function formatTime(iso) {
   if (!iso) return '--';
-  return new Date(iso).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  return new Date(iso).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', timeZone: TZ });
+}
+function formatTimeFull(iso) {
+  if (!iso) return '--';
+  return new Date(iso).toLocaleTimeString('pt-BR', { timeZone: TZ });
 }
 function calcDuration(start, end) {
   const s = Math.floor((new Date(end||Date.now()) - new Date(start)) / 1000);
   const m = Math.floor(s/60), hh = Math.floor(m/60);
   if (hh > 0) return `${hh}h ${m%60}m`;
   return `${m}m ${s%60}s`;
+}
+
+// ── Modal de confirmação ──
+function showDeleteModal() {
+  document.getElementById('modal-overlay').classList.add('show');
+}
+function hideDeleteModal(e) {
+  if (e && e.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('show');
+}
+async function deleteHistory() {
+  const btn = document.getElementById('btn-confirm-delete');
+  btn.textContent = 'Apagando…';
+  btn.style.pointerEvents = 'none';
+
+  try {
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    // Busca IDs das sessões encerradas hoje
+    const r = await api(`sessions?status=eq.finished&created_at=gte.${today.toISOString()}&select=id`);
+    const sessions = await r.json();
+
+    if (!Array.isArray(sessions) || !sessions.length) {
+      hideDeleteModal();
+      btn.textContent = 'Apagar tudo';
+      btn.style.pointerEvents = '';
+      return;
+    }
+
+    const ids = sessions.map(s => s.id);
+
+    // Apaga locations de cada sessão em paralelo
+    await Promise.all(ids.map(id =>
+      api(`locations?session_id=eq.${id}`, { method: 'DELETE' })
+    ));
+
+    // Apaga as sessões
+    await api(`sessions?status=eq.finished&created_at=gte.${today.toISOString()}`, { method: 'DELETE' });
+
+    // Limpa camada de histórico se visível
+    clearHistoryLayer();
+    closeDetail();
+
+    hideDeleteModal();
+    await loadSessions();
+  } catch(e) {
+    console.error('Erro ao apagar histórico:', e);
+    btn.textContent = 'Apagar tudo';
+    btn.style.pointerEvents = '';
+  }
 }
 
 // ── Boot ──
