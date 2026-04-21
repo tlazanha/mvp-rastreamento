@@ -636,6 +636,66 @@ let token = null, sessionId = null, watchId = null;
 let trackInterval = null, timerInterval = null;
 let sessionStart = null, lastPosition = null, lastTimestamp = null;
 let pontos = 0, timelineItems = [];
+let swRegistration = null; // Service Worker
+
+// ── Registro do Service Worker ──
+async function registrarSW() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    swRegistration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+
+    // Recebe mensagens do SW
+    navigator.serviceWorker.addEventListener('message', async (e) => {
+      const { type, payload, count } = e.data || {};
+
+      // SW pediu posição GPS
+      if (type === 'REQUEST_POSITION') {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            navigator.serviceWorker.controller?.postMessage({
+              type: 'POSITION_RESPONSE',
+              payload: {
+                latitude:  pos.coords.latitude,
+                longitude: pos.coords.longitude,
+                speed:     pos.coords.speed || 0,
+                timestamp: Date.now()
+              }
+            });
+          },
+          () => {}, // ignora erro pontual
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+        );
+      }
+
+      // SW enviou pontos acumulados em background
+      if (type === 'FLUSH_DONE' && count > 0) {
+        pontos += count;
+        document.getElementById('stat-pts').textContent = pontos;
+        addTimeline('↑', `${count} ponto(s) recuperado(s) do background`, new Date().toLocaleTimeString('pt-BR'));
+      }
+    });
+  } catch(e) {
+    console.warn('SW não registrado:', e);
+  }
+}
+
+function iniciarSWTracking() {
+  const controller = navigator.serviceWorker?.controller;
+  if (!controller) return false;
+  controller.postMessage({
+    type: 'START_TRACKING',
+    payload: {
+      sessionId:   sessionId,
+      supabaseUrl: 'https://xijwxqyvxoyhjekhkrfm.supabase.co',
+      supabaseKey: 'sb_publishable_o-FGHOuSygRdquiMZZ922g_WSDk_B3Z'
+    }
+  });
+  return true;
+}
+
+function pararSWTracking() {
+  navigator.serviceWorker?.controller?.postMessage({ type: 'STOP_TRACKING' });
+}
 
 // ── Wake Lock (mantém tela ligada) ──
 // No iOS Safari, a única forma confiável é o usuário manter a tela acesa manualmente.
@@ -672,11 +732,13 @@ function desativarWakeLock() {
   updateWakeLockBadge(false);
 }
 
-// Reativa Wake Lock quando usuário volta para a aba
+// Reativa Wake Lock e avisa SW quando usuário volta para a aba
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState === 'visible' && sessionId) {
     addTimeline('↩', 'Voltou para a tela', new Date().toLocaleTimeString('pt-BR'));
     await ativarWakeLock();
+    // Avisa SW para fazer flush dos pontos acumulados em background
+    navigator.serviceWorker?.controller?.postMessage({ type: 'PAGE_VISIBLE' });
   }
 });
 
@@ -776,6 +838,9 @@ async function iniciarAcesso() {
       addTimeline('✓', 'Check-in realizado', formatTimeHMS(sessionStart));
       await ativarWakeLock();
       iniciarRastreamento();
+      // Inicia SW tracking em paralelo (background no Android)
+      // Aguarda SW estar pronto (pode precisar de um ciclo de event loop)
+      setTimeout(() => iniciarSWTracking(), 500);
     } catch(e) {
       showError('error-msg', `Erro: ${e.message}`);
       btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary';
@@ -905,6 +970,7 @@ async function confirmarEncerramento() {
 async function encerrar() {
   clearInterval(timerInterval);
   if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  pararSWTracking();
   desativarWakeLock();
   const fim = new Date();
   try {
@@ -921,6 +987,7 @@ async function encerrar() {
 }
 
 window.onload = () => {
+  registrarSW();
   token = getToken();
   if (!token) {
     token = 'DEMO-' + Math.random().toString(36).substr(2, 6).toUpperCase();
