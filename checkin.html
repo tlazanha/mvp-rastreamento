@@ -485,8 +485,8 @@
 
     <div class="card">
       <div class="card-label">Termo de consentimento</div>
-      <label class="checkbox-row" onclick="toggleFromLabel(this)">
-        <input type="checkbox" class="checkbox-native" id="termo-check">
+      <label class="checkbox-row">
+        <input type="checkbox" class="checkbox-native" id="termo-check" onchange="toggleBtn(this.checked)">
         <span class="custom-checkbox"></span>
         <span class="checkbox-label">Autorizo o uso da minha localização durante minha permanência no condomínio para fins de segurança.</span>
       </label>
@@ -770,11 +770,6 @@ function getToken() {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-}
-
-function toggleFromLabel(label) {
-  const cb = label.querySelector('.checkbox-native');
-  setTimeout(() => toggleBtn(cb.checked), 0);
 }
 
 function toggleBtn(checked) {
