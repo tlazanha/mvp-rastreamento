@@ -445,7 +445,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 <div class="tab-panel" id="panel-historico">
   <div class="hist-date-row" style="margin-top:4px;">
     <span class="hist-date-label">Histórico</span>
-    <input type="date" class="hist-date-input" id="hist-date-p" onchange="onDateChange()">
+    <input type="date" class="hist-date-input" id="hist-date-p" onchange="onDateChange(this.value)">
     <button class="hist-date-today" onclick="setToday()">Hoje</button>
   </div>
   <div id="p-list-historico"><div class="empty-sidebar">Carregando…</div></div>
@@ -497,7 +497,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
       <div id="list-ativas"><div class="empty-sidebar">Carregando…</div></div>
       <div class="hist-date-row">
         <span class="hist-date-label">Histórico</span>
-        <input type="date" class="hist-date-input" id="hist-date" onchange="onDateChange()">
+        <input type="date" class="hist-date-input" id="hist-date" onchange="onDateChange(this.value)">
         <button class="hist-date-today" onclick="setToday()">Hoje</button>
       </div>
       <div id="list-historico"><div class="empty-sidebar">Carregando…</div></div>
@@ -572,7 +572,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   <div class="drawer-body">
     <div class="hist-date-row" style="margin-top:0">
       <span class="hist-date-label">Data</span>
-      <input type="date" class="hist-date-input" id="hist-date-d" onchange="onDateChange()">
+      <input type="date" class="hist-date-input" id="hist-date-d" onchange="onDateChange(this.value)">
       <button class="hist-date-today" onclick="setToday()">Hoje</button>
     </div>
     <div id="d-list-historico"><div class="empty-sidebar">Carregando…</div></div>
@@ -912,19 +912,20 @@ function dateRangeUTC(dateStr) {
   return [new Date(Date.UTC(y,m-1,d,0,0,0)+off).toISOString(), new Date(Date.UTC(y,m-1,d,23,59,59,999)+off).toISOString()];
 }
 function getActiveDate() {
-  // Pega o valor do input de data ativo (dependendo do modo)
-  return document.getElementById('hist-date')?.value ||
-         document.getElementById('hist-date-p')?.value ||
-         document.getElementById('hist-date-d')?.value ||
-         todayLocal();
+  // Retorna o primeiro valor não-vazio dentre os inputs de data
+  for (const id of ['hist-date','hist-date-p','hist-date-d']) {
+    const v = document.getElementById(id)?.value;
+    if (v) return v;
+  }
+  return todayLocal();
 }
 function syncDates(val) {
   ['hist-date','hist-date-p','hist-date-d'].forEach(id => { const el=document.getElementById(id); if(el) el.value=val; });
 }
 function setToday() { syncDates(todayLocal()); loadHistorico(); }
-function onDateChange() {
-  // Propaga data para todos os inputs
-  const val = getActiveDate();
+function onDateChange(val) {
+  // val vem diretamente do input que disparou o evento
+  if (!val) val = getActiveDate();
   syncDates(val);
   clearHistoryLayer(); closeDetail(); loadHistorico();
 }
