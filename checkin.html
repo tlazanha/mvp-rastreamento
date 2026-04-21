@@ -635,9 +635,13 @@ let watchId = null, timerInterval = null, trackInterval = null;
 let sessionStart = null;
 let pontos = 0, timelineItems = [];
 let lastSentLat = null, lastSentLng = null;
-let currentSpeed = 0;   // velocidade atual em km/h
-let lastKnownPos  = null; // última posição conhecida (coords)
-let lastKnownTs   = null; // timestamp da última posição conhecida
+let currentSpeed = 0; // velocidade atual suavizada em km/h
+
+// Janela deslizante de posições para cálculo de velocidade suavizada
+// Guarda os últimos N pontos com { lat, lng, ts }
+const SPEED_WINDOW = 4;   // nº de pontos na janela
+const MIN_DIST_M   = 2;   // descarta pontos praticamente idênticos (ruído estático)
+let posWindow = [];
 
 // ── Wake Lock ──
 let wakeLock = null;
@@ -708,46 +712,71 @@ function addTimeline(icon, title, time) {
     </div>`).join('');
 }
 
-// ── watchPosition: mantém posição atual em memória e atualiza velocidade ──
-// Calcula velocidade entre a posição atual e a anterior com intervalo >= 5s
-// para evitar ruído de GPS parado
+// ── Cálculo de velocidade por janela deslizante ──
+// Usa os últimos SPEED_WINDOW pontos GPS para calcular distância total / tempo total.
+// Isso suaviza o ruído sem introduzir delay artificial — a janela desliza
+// continuamente, então a velocidade atualiza a cada novo ponto recebido.
+function calcSpeedWindow() {
+  if (posWindow.length < 2) return 0;
+
+  const first = posWindow[0];
+  const last  = posWindow[posWindow.length - 1];
+  const dt    = (last.ts - first.ts) / 1000; // segundos
+  if (dt < 1) return 0;
+
+  // Distância total percorrida na janela (soma dos segmentos)
+  let totalDist = 0;
+  for (let i = 1; i < posWindow.length; i++) {
+    totalDist += distMeters(
+      posWindow[i-1].lat, posWindow[i-1].lng,
+      posWindow[i].lat,   posWindow[i].lng
+    );
+  }
+
+  return (totalDist / dt) * 3.6; // km/h
+}
+
+// ── watchPosition: alimenta janela e atualiza velocidade na UI ──
 function iniciarWatchVelocidade() {
   watchId = navigator.geolocation.watchPosition(
     (pos) => {
       const now = Date.now();
-      let speed = 0;
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
 
-      if (lastKnownPos && lastKnownTs) {
-        const dt = (now - lastKnownTs) / 1000; // segundos entre os dois pontos
-
-        // Só calcula velocidade com intervalo >= 5s para reduzir ruído
-        if (dt >= 5) {
-          // 1ª opção: speed nativa do SO (funciona bem no iOS)
-          if (pos.coords.speed != null && pos.coords.speed > 0) {
-            speed = pos.coords.speed * 3.6;
-          } else {
-            // 2ª opção: Haversine com intervalo de tempo suficiente (Android)
-            const dist = distMeters(
-              lastKnownPos.latitude, lastKnownPos.longitude,
-              pos.coords.latitude,  pos.coords.longitude
-            );
-            speed = (dist / dt) * 3.6; // m/s → km/h
-            // Descarta spikes impossíveis (> 30 km/h a pé = ruído)
-            if (speed > 30) speed = currentSpeed; // mantém última leitura válida
-          }
-          lastKnownPos = pos.coords;
-          lastKnownTs  = now;
-        }
-      } else {
-        // Primeira leitura — só inicializa referência
-        lastKnownPos = pos.coords;
-        lastKnownTs  = now;
+      // 1ª opção: speed nativa do SO — iOS Safari fornece isso bem filtrado
+      if (pos.coords.speed != null && pos.coords.speed >= 0) {
+        currentSpeed = Math.round(pos.coords.speed * 3.6);
+        // Alimenta a janela mesmo assim (para gravação e fallback)
+        posWindow.push({ lat, lng, ts: now });
+        if (posWindow.length > SPEED_WINDOW) posWindow.shift();
+        document.getElementById('stat-vel').textContent = currentSpeed;
+        return;
       }
 
-      currentSpeed = Math.round(speed);
+      // 2ª opção: janela deslizante (Android Chrome — speed nativa indisponível)
+      // Só adiciona ponto se se moveu pelo menos MIN_DIST_M do último
+      if (posWindow.length > 0) {
+        const prev = posWindow[posWindow.length - 1];
+        const d = distMeters(prev.lat, prev.lng, lat, lng);
+        if (d < MIN_DIST_M) {
+          // Parado: limpa janela para não acumular ruído de GPS estático
+          posWindow = [];
+          currentSpeed = 0;
+          document.getElementById('stat-vel').textContent = 0;
+          return;
+        }
+      }
+
+      posWindow.push({ lat, lng, ts: now });
+      if (posWindow.length > SPEED_WINDOW) posWindow.shift();
+
+      const speed = calcSpeedWindow();
+      // Limite superior razoável para condomínio (carro rápido = 60 km/h)
+      currentSpeed = Math.round(Math.min(speed, 60));
       document.getElementById('stat-vel').textContent = currentSpeed;
     },
-    () => {}, // erros pontuais ignorados
+    () => {},
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   );
 }
