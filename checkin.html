@@ -673,7 +673,8 @@ async function registrarSW() {
             let speed = 0;
             if (lastPosition && lastTimestamp) {
               speed = calcSpeed(lastPosition, lastTimestamp, pos.coords, now);
-              speed = Math.min(speed, 200);
+            } else if (pos.coords.speed != null && pos.coords.speed >= 0) {
+              speed = pos.coords.speed * 3.6;
             }
             navigator.serviceWorker.controller?.postMessage({
               type: 'POSITION_RESPONSE',
@@ -801,17 +802,24 @@ function calcDuration(start, end) {
   return `${m}m ${s}s`;
 }
 
-function calcSpeed(pos1, time1, pos2, time2) {
+function calcSpeed(pos1, time1, pos2coords, time2) {
+  // Prefere velocidade nativa do SO (já filtrada, sem ruído GPS)
+  if (pos2coords.speed != null && pos2coords.speed >= 0) {
+    return pos2coords.speed * 3.6; // m/s → km/h
+  }
+  // Fallback: Haversine entre dois pontos
   const R = 6371000;
-  const lat1 = pos1.latitude * Math.PI / 180;
-  const lat2 = pos2.latitude * Math.PI / 180;
-  const dLat = (pos2.latitude - pos1.latitude) * Math.PI / 180;
-  const dLon = (pos2.longitude - pos1.longitude) * Math.PI / 180;
+  const lat1 = pos1.latitude  * Math.PI / 180;
+  const lat2 = pos2coords.latitude  * Math.PI / 180;
+  const dLat = (pos2coords.latitude  - pos1.latitude)  * Math.PI / 180;
+  const dLon = (pos2coords.longitude - pos1.longitude) * Math.PI / 180;
   const a = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
   const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   const dt = (time2 - time1) / 1000;
-  if (dt === 0) return 0;
-  return (d / dt) * 3.6;
+  if (dt < 1) return 0; // intervalo muito curto — ignora
+  const v = (d / dt) * 3.6;
+  // Limita spikes de ruído GPS (>120 km/h a pé = ruído)
+  return v > 120 ? 0 : v;
 }
 
 function addTimeline(icon, title, time) {
@@ -853,7 +861,8 @@ async function iniciarAcesso() {
       const data = await resp.json();
       sessionId = data[0].id;
       sessionStart = new Date();
-      await sendLocationDirect(pos.coords.latitude, pos.coords.longitude, 0, pos.coords.timestamp || Date.now());
+      const firstSpeed = pos.coords.speed != null ? pos.coords.speed * 3.6 : 0;
+      await sendLocationDirect(pos.coords.latitude, pos.coords.longitude, firstSpeed, pos.coords.timestamp || Date.now());
       lastPosition = pos.coords; lastTimestamp = Date.now();
       showScreen('screen-ativo');
       document.getElementById('ativo-inicio').textContent = `Iniciado às ${formatTime(sessionStart)}`;
@@ -947,12 +956,13 @@ function iniciarRastreamento() {
   watchId = navigator.geolocation.watchPosition(
     (pos) => {
       const now  = Date.now();
-      let speed  = 0;
+      let speed = 0;
 
-      // Calcula velocidade com qualquer posição anterior (sem throttle de UI)
+      // Calcula velocidade — prefere speed nativa do SO, fallback Haversine
       if (lastPosition && lastTimestamp) {
         speed = calcSpeed(lastPosition, lastTimestamp, pos.coords, now);
-        speed = Math.min(speed, 200);
+      } else if (pos.coords.speed != null && pos.coords.speed >= 0) {
+        speed = pos.coords.speed * 3.6;
       }
 
       // Atualiza UI sempre — velocidade, timeline, horário

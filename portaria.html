@@ -407,6 +407,10 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   /* Drawers não usados em portrait */
   .drawer, .drawer-overlay { display: none !important; }
 }
+
+  .detail-encerrar { background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--red); cursor: pointer; font-family: var(--sans); display: none; }
+  .detail-encerrar:hover { background: #fee2e2; }
+  .detail-encerrar.show { display: inline-block; }
 </style>
 </head>
 <body>
@@ -542,7 +546,10 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
     <div class="map-detail" id="map-detail">
       <div class="detail-header">
         <span class="detail-token" id="detail-token">—</span>
-        <button class="detail-close" onclick="closeDetail()">Fechar</button>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button class="detail-encerrar" id="btn-encerrar-sessao" onclick="encerrarSessaoAtiva()">Encerrar</button>
+          <button class="detail-close" onclick="closeDetail()">Fechar</button>
+        </div>
       </div>
       <div class="detail-stats">
         <div class="detail-stat"><div class="detail-stat-label">Duração</div><div class="detail-stat-value" id="detail-tempo">—</div></div>
@@ -782,7 +789,7 @@ async function selectSession(id, token) {
   document.getElementById(`card-${id}`)?.classList.add('selected');
   markers[id]?.openPopup();
   document.getElementById('detail-vel-label').textContent = 'Vel. atual';
-  openDetailPanel(token,'…','…','…');
+  openDetailPanel(token,'…','…','…', true);
   try {
     const [lr,sr] = await Promise.all([api(`locations?session_id=eq.${id}&order=timestamp.asc`), api(`sessions?id=eq.${id}&select=created_at`)]);
     const locs=await lr.json(), sess=await sr.json();
@@ -851,18 +858,39 @@ async function renderLocRows(locs) {
   }
 }
 
-function openDetailPanel(token,tempo,pts,vel) {
+function openDetailPanel(token,tempo,pts,vel,isActive=false) {
   document.getElementById('detail-token').textContent = token;
   document.getElementById('detail-tempo').textContent = tempo;
   document.getElementById('detail-pts').textContent   = pts;
   document.getElementById('detail-vel').textContent   = vel;
   document.getElementById('detail-locations').innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--text-3)">Carregando…</div>';
   document.getElementById('map-detail').classList.add('open');
+  // Mostra botão encerrar só para sessões ativas
+  const btn = document.getElementById('btn-encerrar-sessao');
+  if (btn) btn.classList.toggle('show', isActive);
 }
 function setDetailEmpty() { document.getElementById('detail-locations').innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--text-3)">Nenhum ponto registrado.</div>'; }
 function setDetailError() { document.getElementById('detail-locations').innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--red)">Erro ao carregar dados.</div>'; }
+async function encerrarSessaoAtiva() {
+  if (!selectedId) return;
+  const btn = document.getElementById('btn-encerrar-sessao');
+  btn.textContent = 'Encerrando…'; btn.disabled = true;
+  try {
+    await api(`sessions?id=eq.${selectedId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'finished', ended_at: new Date().toISOString() })
+    });
+    closeDetail();
+    await loadSessions();
+  } catch(e) {
+    btn.textContent = 'Encerrar'; btn.disabled = false;
+  }
+}
+
 function closeDetail() {
   document.getElementById('map-detail').classList.remove('open');
+  const btn = document.getElementById('btn-encerrar-sessao');
+  if (btn) { btn.textContent = 'Encerrar'; btn.disabled = false; btn.classList.remove('show'); }
   clearHistoryLayer(); selectedId = null;
   document.querySelectorAll('.session-card').forEach(c=>c.classList.remove('selected'));
   document.getElementById('detail-vel-label').textContent = 'Vel. atual';
