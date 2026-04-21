@@ -64,6 +64,24 @@
   .btn-copiar { width:100%; margin-top:6px; padding:9px; background:var(--green); color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; font-family:var(--sans); cursor:pointer; display:none; transition:filter 0.15s; }
   .btn-copiar:hover { filter:brightness(1.1); }
 
+  /* Seletor de data do histórico */
+  .hist-date-row { display:flex; align-items:center; gap:8px; margin-top:16px; margin-bottom:10px; }
+  .hist-date-label { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:rgba(255,255,255,0.38); font-weight:600; flex-shrink:0; }
+  .hist-date-input {
+    flex:1; padding:6px 10px; background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.12); border-radius:8px;
+    color:#fff; font-size:12px; font-family:var(--mono); outline:none;
+    transition:border-color 0.15s; cursor:pointer;
+    color-scheme: dark;
+  }
+  .hist-date-input:focus { border-color:rgba(255,255,255,0.35); }
+  .hist-date-today {
+    padding:5px 9px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12);
+    border-radius:7px; color:rgba(255,255,255,0.6); font-size:11px; font-weight:600;
+    font-family:var(--sans); cursor:pointer; white-space:nowrap; transition:background 0.15s;
+  }
+  .hist-date-today:hover { background:rgba(255,255,255,0.16); }
+
   /* Sessions scrollable */
   .sessions-section { flex:1; overflow-y:auto; padding:0 24px 0; min-height:0; }
   .sessions-section::-webkit-scrollbar { width:3px; }
@@ -226,7 +244,11 @@
       </div>
       <div id="list-ativas"><div class="empty-sidebar">Carregando…</div></div>
 
-      <div class="sessions-label" style="margin-top:20px;">Histórico hoje</div>
+      <div class="hist-date-row">
+        <span class="hist-date-label">Histórico</span>
+        <input type="date" class="hist-date-input" id="hist-date" onchange="onDateChange()">
+        <button class="hist-date-today" onclick="setToday()" title="Ir para hoje">Hoje</button>
+      </div>
       <div id="list-historico"><div class="empty-sidebar">Carregando…</div></div>
       <button class="btn-apagar-hist" id="btn-apagar-hist" onclick="showDeleteModal()">
         Apagar histórico do dia
@@ -566,18 +588,20 @@ function closeDetail() {
 // ── Sidebar ──
 function renderSidebar(ativas, historico) {
   document.getElementById('cnt-ativo').textContent = ativas.length;
-  document.getElementById('cnt-hoje').textContent  = ativas.length + historico.length;
+  document.getElementById('cnt-hoje').textContent  = ativas.length + (historico ? historico.length : 0);
   document.getElementById('update-time').textContent = `Atualizado às ${fmtNow()}`;
 
   const badge = document.getElementById('badge-ativas');
   badge.textContent   = ativas.length;
   badge.style.display = ativas.length > 0 ? 'inline' : 'none';
 
-  renderList('list-ativas',    ativas,    true);
-  renderList('list-historico', historico, false);
+  renderList('list-ativas', ativas, true);
 
-  // Botão apagar: visível só quando há histórico
-  document.getElementById('btn-apagar-hist').style.display = historico.length > 0 ? 'block' : 'none';
+  // Só atualiza lista histórico se passado (null = data diferente, não sobrescreve)
+  if (historico !== null) {
+    renderList('list-historico', historico, false);
+    document.getElementById('btn-apagar-hist').style.display = historico.length > 0 ? 'block' : 'none';
+  }
 }
 
 function handleHistoryClick(id) {
@@ -619,6 +643,52 @@ function renderList(containerId, sessions, isActive) {
   }).join('');
 }
 
+// ── Seletor de data ──
+function todayLocal() {
+  // Retorna YYYY-MM-DD no timezone de SP
+  return new Date().toLocaleDateString('pt-BR', { timeZone: TZ })
+    .split('/').reverse().join('-');
+}
+
+function dateRangeUTC(dateStr) {
+  // dateStr = "YYYY-MM-DD" (horário local SP)
+  // Retorna [inicioUTC, fimUTC] como ISO strings
+  const [y, m, d] = dateStr.split('-').map(Number);
+  // SP é UTC-3 (sem DST simplificado para MVP)
+  const offset = 3 * 60 * 60 * 1000;
+  const start  = new Date(Date.UTC(y, m-1, d, 0, 0, 0) + offset);
+  const end    = new Date(Date.UTC(y, m-1, d, 23, 59, 59, 999) + offset);
+  return [start.toISOString(), end.toISOString()];
+}
+
+function setToday() {
+  const input = document.getElementById('hist-date');
+  input.value = todayLocal();
+  loadHistorico();
+}
+
+function onDateChange() {
+  clearHistoryLayer();
+  closeDetail();
+  loadHistorico();
+}
+
+async function loadHistorico() {
+  const input = document.getElementById('hist-date');
+  if (!input.value) return;
+  const [start, end] = dateRangeUTC(input.value);
+  const rh = await api(`sessions?status=eq.finished&created_at=gte.${start}&created_at=lte.${end}&order=created_at.desc&select=*`);
+  const histArr = await rh.json().then(d => Array.isArray(d) ? d : []);
+
+  renderList('list-historico', histArr, false);
+  document.getElementById('btn-apagar-hist').style.display = histArr.length > 0 ? 'block' : 'none';
+
+  // Atualiza label do modal com a data selecionada
+  const dateLabel = new Date(input.value + 'T12:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'long' });
+  const modalDesc = document.querySelector('.modal-desc');
+  if (modalDesc) modalDesc.textContent = `Todas as sessões encerradas em ${dateLabel} e seus pontos de localização serão removidos permanentemente. Esta ação não pode ser desfeita.`;
+}
+
 // ── Ciclo principal ──
 let firstLoad = true, knownActive = new Set();
 
@@ -632,7 +702,12 @@ async function loadSessions() {
     const ativasArr = await ra.json().then(d => Array.isArray(d) ? d : []);
     const histArr   = await rh.json().then(d => Array.isArray(d) ? d : []);
 
-    renderSidebar(ativasArr, histArr);
+    // Atualiza ativos sempre; histórico só se a data selecionada for hoje
+    const dateInput = document.getElementById('hist-date');
+    const selectedDate = dateInput?.value;
+    const isToday = !selectedDate || selectedDate === todayLocal();
+
+    renderSidebar(ativasArr, isToday ? histArr : null);
 
     const activeIds = new Set(ativasArr.map(s => s.id));
     for (const id of knownActive) { if (!activeIds.has(id)) removeMarker(id); }
@@ -697,8 +772,9 @@ async function deleteHistory() {
   btn.textContent = 'Apagando…';
   btn.disabled = true;
   try {
-    const today = new Date(); today.setHours(0,0,0,0);
-    const r = await api(`sessions?status=eq.finished&created_at=gte.${today.toISOString()}&select=id`);
+    const dateInput = document.getElementById('hist-date');
+    const [start, end] = dateRangeUTC(dateInput.value || todayLocal());
+    const r = await api(`sessions?status=eq.finished&created_at=gte.${start}&created_at=lte.${end}&select=id`);
     const sessions = await r.json();
     if (Array.isArray(sessions) && sessions.length) {
       await Promise.all(sessions.map(s =>
@@ -719,6 +795,8 @@ async function deleteHistory() {
 
 // ── Boot ──
 initMap();
+// Inicializa input de data com hoje e carrega histórico
+document.getElementById('hist-date').value = todayLocal();
 loadSessions();
 setInterval(loadSessions, 5000);
 </script>

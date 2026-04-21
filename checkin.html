@@ -559,11 +559,11 @@
         </svg>
       </div>
       <div class="tela-aviso-text">
-        <strong>Mantenha esta tela aberta</strong> durante toda a visita. Sair desta tela pode interromper o rastreamento.
+        <strong>Mantenha esta tela aberta</strong> e a tela do celular ligada durante toda a visita. No iPhone, não minimize o Safari.
         <br>
         <span class="wakelock-badge off" id="wakelock-badge">
           <span class="wakelock-badge-dot"></span>
-          <span id="wakelock-label">Tela livre</span>
+          <span id="wakelock-label">Mantenha a tela ligada</span>
         </span>
       </div>
     </div>
@@ -637,81 +637,46 @@ let trackInterval = null, timerInterval = null;
 let sessionStart = null, lastPosition = null, lastTimestamp = null;
 let pontos = 0, timelineItems = [];
 
-// ── Wake Lock + AudioContext noSleep (iOS Safari compatível) ──
-let wakeLock      = null;
-let audioCtx      = null;
-let audioNode     = null;
-let audioInterval = null;
+// ── Wake Lock (mantém tela ligada) ──
+// No iOS Safari, a única forma confiável é o usuário manter a tela acesa manualmente.
+// A Wake Lock API funciona no Android Chrome e iOS 16.4+.
+// Quando não suportada, orientamos o usuário via UI.
+let wakeLock = null;
 
 function updateWakeLockBadge(active) {
   const badge = document.getElementById('wakelock-badge');
   const label = document.getElementById('wakelock-label');
   if (!badge || !label) return;
   badge.className = 'wakelock-badge ' + (active ? 'ok' : 'off');
-  label.textContent = active ? 'Tela protegida' : 'Tela livre';
-}
-
-// AudioContext hack — mantém oscilador de volume quase-zero ativo.
-// iOS Safari não suspende JS enquanto há AudioContext rodando,
-// mesmo com a tela bloqueada manualmente pelo usuário.
-// DEVE ser chamado dentro de um evento de gesto (click) — aqui é
-// disparado pelo clique em "Iniciar acesso", então autoplay é permitido.
-function ativarAudioContext() {
-  try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return false;
-    audioCtx = new Ctx();
-    const gain = audioCtx.createGain();
-    gain.gain.value = 0.001;
-    audioNode = audioCtx.createOscillator();
-    audioNode.frequency.value = 1;
-    audioNode.connect(gain);
-    gain.connect(audioCtx.destination);
-    audioNode.start(0);
-    // Pulso periódico para evitar suspensão do contexto
-    audioInterval = setInterval(() => {
-      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-    }, 10000);
-    return true;
-  } catch(e) { return false; }
-}
-
-function desativarAudioContext() {
-  clearInterval(audioInterval);
-  if (audioNode) { try { audioNode.stop(); } catch(e){} audioNode = null; }
-  if (audioCtx)  { try { audioCtx.close(); } catch(e){} audioCtx = null; }
+  label.textContent = active ? 'Tela protegida' : 'Mantenha a tela ligada';
 }
 
 async function ativarWakeLock() {
-  let ok = false;
-  // 1ª camada: Wake Lock API nativa (Android Chrome, iOS 16.4+)
   if ('wakeLock' in navigator) {
     try {
       wakeLock = await navigator.wakeLock.request('screen');
-      wakeLock.addEventListener('release', () => { wakeLock = null; });
-      ok = true;
-    } catch(e) {}
+      wakeLock.addEventListener('release', () => {
+        wakeLock = null;
+        updateWakeLockBadge(false);
+      });
+      updateWakeLockBadge(true);
+      return;
+    } catch(e) { /* não suportado ou permissão negada */ }
   }
-  // 2ª camada: AudioContext (iOS Safari todas as versões)
-  if (ativarAudioContext()) ok = true;
-  updateWakeLockBadge(ok);
+  // Sem suporte — badge mostra instrução ao usuário
+  updateWakeLockBadge(false);
 }
 
 function desativarWakeLock() {
   if (wakeLock) { try { wakeLock.release(); } catch(e){} wakeLock = null; }
-  desativarAudioContext();
   updateWakeLockBadge(false);
 }
 
-// Reativa quando usuário volta para a aba
+// Reativa Wake Lock quando usuário volta para a aba
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState === 'visible' && sessionId) {
-    addTimeline('↩', 'Tela reativada', new Date().toLocaleTimeString('pt-BR'));
-    if ('wakeLock' in navigator && !wakeLock) {
-      try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
-    }
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-    updateWakeLockBadge(true);
+    addTimeline('↩', 'Voltou para a tela', new Date().toLocaleTimeString('pt-BR'));
+    await ativarWakeLock();
   }
 });
 
