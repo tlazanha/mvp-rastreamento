@@ -88,10 +88,14 @@ async function handlePosition(pos) {
     timestamp:  new Date(pos.timestamp).toISOString()
   };
 
-  // Tenta enviar imediatamente
+  // Verifica se alguma aba está visível — se estiver, a PÁGINA grava (evita duplicata)
+  const clients = await self.clients.matchAll({ type: 'window' });
+  const algumVisivel = clients.some(c => c.visibilityState === 'visible');
+  if (algumVisivel) return; // página ativa cuida da gravação
+
+  // Página em background — SW grava
   const sent = await sendPoint(point);
   if (!sent) {
-    // Falhou (offline ou aba em background sem rede) — acumula para flush
     pendingPoints.push(point);
   }
 }

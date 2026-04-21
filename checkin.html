@@ -646,23 +646,44 @@ async function registrarSW() {
 
     // Recebe mensagens do SW
     navigator.serviceWorker.addEventListener('message', async (e) => {
-      const { type, payload, count } = e.data || {};
+      const { type, count } = e.data || {};
 
-      // SW pediu posição GPS
-      if (type === 'REQUEST_POSITION') {
+      // SW confirmou que está ativo — página para de gravar diretamente
+      if (type === 'SW_READY') {
+        swAtivo = true;
+      }
+
+      // SW parou — página volta a gravar diretamente
+      if (type === 'SW_STOPPED') {
+        swAtivo = false;
+      }
+
+      // SW pediu posição GPS para gravar em background
+      if (type === 'REQUEST_POSITION' && sessionId) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
+            // Calcula velocidade local para mandar junto
+            const now = Date.now();
+            let speed = 0;
+            if (lastPosition && lastTimestamp) {
+              speed = calcSpeed(lastPosition, lastTimestamp, pos.coords, now);
+              speed = Math.min(speed, 200);
+            }
             navigator.serviceWorker.controller?.postMessage({
               type: 'POSITION_RESPONSE',
               payload: {
                 latitude:  pos.coords.latitude,
                 longitude: pos.coords.longitude,
-                speed:     pos.coords.speed || 0,
-                timestamp: Date.now()
+                speed:     speed,
+                timestamp: now
               }
             });
+            // Atualiza deduplicação local para não regravrar quando voltar ao foco
+            lastSentLat = pos.coords.latitude;
+            lastSentLng = pos.coords.longitude;
+            lastSentTs  = now;
           },
-          () => {}, // ignora erro pontual
+          () => {}, // GPS indisponível — SW vai tentar no próximo ciclo
           { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
         );
       }
@@ -671,7 +692,7 @@ async function registrarSW() {
       if (type === 'FLUSH_DONE' && count > 0) {
         pontos += count;
         document.getElementById('stat-pts').textContent = pontos;
-        addTimeline('↑', `${count} ponto(s) recuperado(s) do background`, new Date().toLocaleTimeString('pt-BR'));
+        addTimeline('↩', `${count} ponto(s) recuperado(s) do background`, new Date().toLocaleTimeString('pt-BR'));
       }
     });
   } catch(e) {
@@ -872,17 +893,18 @@ function distanceMeters(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-async function sendLocation(lat, lng, speed, ts) {
-  // Ignora se posição não mudou significativamente (>= MIN_DISTANCE_M)
+// Intervalo mínimo entre gravações no banco (ms)
+const MIN_INTERVAL_MS = 10000;
+let lastSentTs  = 0;
+let lastSentLat = null, lastSentLng = null;
+const MIN_DISTANCE_M = 5;
+let swAtivo = false; // true quando SW está controlando gravação
+
+// Grava ponto diretamente no banco (usado quando SW não está disponível)
+async function sendLocationDirect(lat, lng, speed, ts) {
   if (lastSentLat !== null && lastSentLng !== null) {
     const dist = distanceMeters(lastSentLat, lastSentLng, lat, lng);
-    if (dist < MIN_DISTANCE_M) {
-      // Atualiza UI de velocidade (0) e "última atualiz." sem gravar em banco
-      document.getElementById('stat-vel').textContent = '0';
-      document.getElementById('stat-upd').textContent =
-        new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-      return;
-    }
+    if (dist < MIN_DISTANCE_M) return; // sem movimento — não grava
   }
   try {
     await api('locations', {
@@ -901,12 +923,22 @@ async function sendLocation(lat, lng, speed, ts) {
   }
 }
 
-// Intervalo mínimo entre envios (ms) — evita flood quando o SO entrega posições rápido
-const MIN_INTERVAL_MS = 10000;
-let lastSentTs = 0;
+// Atualiza UI de velocidade e timeline — sempre, independente de gravação
+function atualizarUI(speed, ts) {
+  document.getElementById('stat-vel').textContent = Math.round(speed);
+  document.getElementById('stat-upd').textContent =
+    new Date(ts).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  if (speed > 30) {
+    addTimeline('↑', `Velocidade elevada: ${Math.round(speed)} km/h`, new Date(ts).toLocaleTimeString('pt-BR'));
+  } else if (speed > 0) {
+    addTimeline('◎', 'Em movimento', new Date(ts).toLocaleTimeString('pt-BR'));
+  } else {
+    addTimeline('◎', 'Posição atualizada', new Date(ts).toLocaleTimeString('pt-BR'));
+  }
+}
 
 function iniciarRastreamento() {
-  // Timer de duração — só atualiza UI, independente do GPS
+  // Timer de duração — atualiza UI a cada segundo
   timerInterval = setInterval(() => {
     if (!sessionStart) return;
     const diff = Math.floor((Date.now() - sessionStart) / 1000);
@@ -915,38 +947,34 @@ function iniciarRastreamento() {
     document.getElementById('stat-tempo').textContent = `${m}:${s}`;
   }, 1000);
 
-  // watchPosition: listener nativo — sobrevive a troca de aba no Android Chrome.
-  // O SO continua entregando posições mesmo em background; o JS as processa
-  // quando a aba voltar ao foco (fila de callbacks pendentes).
+  // watchPosition: entrega posições contínuas do SO
+  // — Sempre atualiza UI de velocidade (sem throttle)
+  // — Só grava no banco se SW não estiver ativo (fallback)
   watchId = navigator.geolocation.watchPosition(
     (pos) => {
-      const now = Date.now();
+      const now  = Date.now();
+      let speed  = 0;
 
-      // Throttle por tempo: ignora se não passou MIN_INTERVAL_MS desde o último envio
-      const elapsed = now - lastSentTs;
-      if (elapsed < MIN_INTERVAL_MS) return;
-
-      let speed = 0;
+      // Calcula velocidade com qualquer posição anterior (sem throttle de UI)
       if (lastPosition && lastTimestamp) {
         speed = calcSpeed(lastPosition, lastTimestamp, pos.coords, now);
         speed = Math.min(speed, 200);
       }
 
-      document.getElementById('stat-vel').textContent = Math.round(speed);
+      // Atualiza UI sempre — velocidade, timeline, horário
+      atualizarUI(speed, now);
 
-      if (speed > 30) {
-        addTimeline('↑', `Velocidade elevada: ${Math.round(speed)} km/h`, new Date().toLocaleTimeString('pt-BR'));
-      } else {
-        addTimeline('◎', 'Posição atualizada', new Date().toLocaleTimeString('pt-BR'));
-      }
-
-      lastSentTs = now;
-      sendLocation(pos.coords.latitude, pos.coords.longitude, speed, now);
-      lastPosition = pos.coords;
+      // Atualiza posição local para próximo cálculo de velocidade
+      lastPosition  = pos.coords;
       lastTimestamp = now;
+
+      // Grava no banco SOMENTE se SW não está ativo e passou o intervalo mínimo
+      if (!swAtivo && (now - lastSentTs) >= MIN_INTERVAL_MS) {
+        lastSentTs = now;
+        sendLocationDirect(pos.coords.latitude, pos.coords.longitude, speed, now);
+      }
     },
     (err) => {
-      // PERMISSION_DENIED = sem recuperação; outros = temporário
       if (err.code === 1) {
         showError('error-gps', 'Permissão de localização negada. Verifique as configurações.');
         encerrar();
@@ -954,11 +982,7 @@ function iniciarRastreamento() {
         showError('error-gps', 'GPS temporariamente indisponível…');
       }
     },
-    {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0        // sempre posição fresca — sem cache
-    }
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
 }
 
