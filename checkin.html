@@ -853,7 +853,7 @@ async function iniciarAcesso() {
       const data = await resp.json();
       sessionId = data[0].id;
       sessionStart = new Date();
-      await sendLocation(pos.coords.latitude, pos.coords.longitude, 0, pos.coords.timestamp || Date.now());
+      await sendLocationDirect(pos.coords.latitude, pos.coords.longitude, 0, pos.coords.timestamp || Date.now());
       lastPosition = pos.coords; lastTimestamp = Date.now();
       showScreen('screen-ativo');
       document.getElementById('ativo-inicio').textContent = `Iniciado às ${formatTime(sessionStart)}`;
