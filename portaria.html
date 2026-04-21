@@ -628,41 +628,51 @@ function renderSidebar(ativas, historico) {
   renderList('list-historico', historico, false);
 }
 
+// Cache de objetos de sessão para acesso seguro (evita JSON inline no onclick)
+const sessionCache = {};
+
 function renderList(containerId, sessions, isActive) {
   const el = document.getElementById(containerId);
   if (!sessions.length) {
     el.innerHTML = `<div class="empty-sidebar">${isActive ? 'Nenhum prestador ativo' : 'Nenhuma visita encerrada'}</div>`;
     return;
   }
+  sessions.forEach(s => { sessionCache[s.id] = s; });
+
   el.innerHTML = sessions.map(s => {
     const color    = sessionIdx[s.id] !== undefined ? colorFor(sessionIdx[s.id]) : '#6c4fcc';
     const initials = s.token.slice(0,2).toUpperCase();
-    const isActive = s.status === 'active';
-    const onclick  = isActive
+    const active   = s.status === 'active';
+    const onclick  = active
       ? `selectSession('${s.id}','${s.token}')`
-      : `selectHistory(${JSON.stringify(s)})`;
+      : `handleHistoryClick('${s.id}')`;
     return `
-      <div class="session-card ${!isActive?'finished':''} ${selectedId===s.id?'selected':''}"
+      <div class="session-card ${!active?'finished':''} ${selectedId===s.id?'selected':''}"
            id="card-${s.id}" onclick="${onclick}">
-        <div class="session-avatar ${isActive?'avatar-active':'avatar-finished'}"
-             style="${isActive?`background:${color}20;color:${color}`:''}">
+        <div class="session-avatar ${active?'avatar-active':'avatar-finished'}"
+             style="${active?`background:${color}20;color:${color}`:''}">
           ${initials}
         </div>
         <div class="session-info">
           <div class="session-token">${s.token}</div>
           <div class="session-meta">
             ${formatTime(s.created_at)}
-            ${!isActive
+            ${!active
               ? ` · ${calcDuration(s.created_at, s.ended_at)}`
               : ` · ${calcDuration(s.created_at, null)}`}
           </div>
         </div>
-        <div class="pill ${isActive?'pill-active':'pill-finished'}">
-          <span class="pill-dot ${isActive?'pill-dot-active':'pill-dot-finished'}"></span>
-          ${isActive?'Ativo':'Fim'}
+        <div class="pill ${active?'pill-active':'pill-finished'}">
+          <span class="pill-dot ${active?'pill-dot-active':'pill-dot-finished'}"></span>
+          ${active?'Ativo':'Fim'}
         </div>
       </div>`;
   }).join('');
+}
+
+function handleHistoryClick(id) {
+  const s = sessionCache[id];
+  if (s) selectHistory(s);
 }
 
 // ── Ciclo principal ──
