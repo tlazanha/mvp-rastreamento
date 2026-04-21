@@ -463,7 +463,13 @@ async function selectSession(id, token) {
 }
 
 // ── Seleção: sessão HISTÓRICO ──
+let _historyCallId = 0; // controle de race condition
+
 async function selectHistory(session) {
+  // Incrementa ID desta chamada — se outra vier antes de terminarmos, ela
+  // sobrescreve e esta descarta o resultado ao retornar
+  const myCallId = ++_historyCallId;
+
   clearHistoryLayer();
   selectedId = session.id;
   document.querySelectorAll('.session-card').forEach(c => c.classList.remove('selected'));
@@ -484,6 +490,9 @@ async function selectHistory(session) {
     document.getElementById('detail-vel').textContent   = `${velMax} km/h`;
 
     await renderLocRows(locs);
+
+    // Abandona se outra sessão foi selecionada enquanto aguardávamos os dados
+    if (myCallId !== _historyCallId) return;
 
     // Desenha no mapa
     const coords = locs.map(l => [l.latitude, l.longitude]);
