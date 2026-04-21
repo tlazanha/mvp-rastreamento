@@ -150,7 +150,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 .detail-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); font-weight: 700; margin-bottom: 4px; }
 .detail-stat-value { font-size: 16px; font-weight: 700; color: var(--text); font-family: var(--mono); letter-spacing: -0.5px; }
 
-.detail-locations { max-height: 220px; overflow-y: auto; }
+.detail-locations { max-height: 126px; overflow-y: auto; }
 .detail-locations::-webkit-scrollbar { width: 3px; }
 .detail-locations::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
 
@@ -191,6 +191,16 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 .modal-btn-cancel  { background: #f3f2ef; color: var(--text-2); }
 .modal-btn-confirm { background: var(--red); color: #fff; }
 .modal-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Elementos mobile ocultos no desktop */
+.mobile-header    { display: none; }
+.bottom-nav       { display: none; }
+.tab-bar          { display: none; }
+.tab-panel        { display: none; }
+.drawer           { display: none; }
+.drawer-overlay   { display: none; }
+#p-btn-apagar-hist{ display: none !important; }
+#d-btn-apagar-hist{ display: none !important; }
 
 /* ═══════════════════════════════════════════
    MOBILE LANDSCAPE (≤900px landscape)
@@ -370,15 +380,15 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   #panel-link .link-section { padding: 0; }
   #panel-link .link-section-label { margin-bottom: 12px; }
 
-  /* Painel detalhe: ocupa bottom como sheet */
+  /* Painel detalhe: sheet com altura controlada */
   .map-detail {
     position: fixed;
     left: 0; right: 0; bottom: 0;
     width: 100%; border-radius: 18px 18px 0 0;
-    max-height: 70vh;
+    max-height: 320px;
   }
   .map-detail.open { display: flex; flex-direction: column; }
-  .detail-locations { max-height: none; flex: 1; }
+  .detail-locations { max-height: 126px; flex: none; overflow-y: auto; }
 
   /* Mapa live badge */
   .map-live-badge { top: 12px; right: 12px; }
