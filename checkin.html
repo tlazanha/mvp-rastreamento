@@ -635,7 +635,9 @@ let watchId = null, timerInterval = null, trackInterval = null;
 let sessionStart = null;
 let pontos = 0, timelineItems = [];
 let lastSentLat = null, lastSentLng = null;
-let currentSpeed = 0; // velocidade atual em km/h (atualizada pelo watchPosition)
+let currentSpeed = 0;   // velocidade atual em km/h
+let lastKnownPos  = null; // última posição conhecida (coords)
+let lastKnownTs   = null; // timestamp da última posição conhecida
 
 // ── Wake Lock ──
 let wakeLock = null;
@@ -706,19 +708,46 @@ function addTimeline(icon, title, time) {
     </div>`).join('');
 }
 
-// ── watchPosition: atualiza velocidade na UI em tempo real ──
-// NÃO grava no banco — só mantém currentSpeed atualizado
+// ── watchPosition: mantém posição atual em memória e atualiza velocidade ──
+// Calcula velocidade entre a posição atual e a anterior com intervalo >= 5s
+// para evitar ruído de GPS parado
 function iniciarWatchVelocidade() {
   watchId = navigator.geolocation.watchPosition(
     (pos) => {
-      // Velocidade nativa do SO em m/s → km/h
-      // É a fonte mais confiável: já filtrada pelo chipset GPS
-      if (pos.coords.speed != null && pos.coords.speed >= 0) {
-        currentSpeed = Math.round(pos.coords.speed * 3.6);
+      const now = Date.now();
+      let speed = 0;
+
+      if (lastKnownPos && lastKnownTs) {
+        const dt = (now - lastKnownTs) / 1000; // segundos entre os dois pontos
+
+        // Só calcula velocidade com intervalo >= 5s para reduzir ruído
+        if (dt >= 5) {
+          // 1ª opção: speed nativa do SO (funciona bem no iOS)
+          if (pos.coords.speed != null && pos.coords.speed > 0) {
+            speed = pos.coords.speed * 3.6;
+          } else {
+            // 2ª opção: Haversine com intervalo de tempo suficiente (Android)
+            const dist = distMeters(
+              lastKnownPos.latitude, lastKnownPos.longitude,
+              pos.coords.latitude,  pos.coords.longitude
+            );
+            speed = (dist / dt) * 3.6; // m/s → km/h
+            // Descarta spikes impossíveis (> 30 km/h a pé = ruído)
+            if (speed > 30) speed = currentSpeed; // mantém última leitura válida
+          }
+          lastKnownPos = pos.coords;
+          lastKnownTs  = now;
+        }
+      } else {
+        // Primeira leitura — só inicializa referência
+        lastKnownPos = pos.coords;
+        lastKnownTs  = now;
       }
+
+      currentSpeed = Math.round(speed);
       document.getElementById('stat-vel').textContent = currentSpeed;
     },
-    () => {}, // erros pontuais ignorados — o setInterval vai tentar novamente
+    () => {}, // erros pontuais ignorados
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   );
 }
@@ -731,16 +760,14 @@ function iniciarGravacao() {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
 
-        // Só grava se moveu mais de 5 metros desde o último ponto salvo
+        // Só grava se moveu mais de 5 metros
         if (lastSentLat !== null) {
           const dist = distMeters(lastSentLat, lastSentLng, lat, lng);
-          if (dist < 5) return; // parado — não grava
+          if (dist < 5) return;
         }
 
-        // Velocidade: usa nativa do SO se disponível, senão currentSpeed
-        const speed = pos.coords.speed != null
-          ? Math.round(pos.coords.speed * 3.6)
-          : currentSpeed;
+        // Usa velocidade calculada pelo watchPosition (já filtrada)
+        const speed = currentSpeed;
 
         try {
           await api('locations', {
@@ -760,10 +787,10 @@ function iniciarGravacao() {
           if (speed > 30) {
             addTimeline('↑', `Velocidade: ${speed} km/h`, fmtHora());
           } else {
-            addTimeline('◎', 'Ponto registrado', fmtHora());
+            addTimeline('◎', `Ponto registrado · ${speed} km/h`, fmtHora());
           }
         } catch(e) {
-          showError('error-gps', 'Falha ao enviar localização. Tentando novamente…');
+          showError('error-gps', 'Falha ao enviar. Tentando novamente…');
         }
       },
       () => { showError('error-gps', 'GPS indisponível…'); },
