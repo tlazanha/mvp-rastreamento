@@ -945,7 +945,8 @@ async function iniciarAcesso() {
         body: JSON.stringify({
           token, status: 'active',
           latitude_start:  pos.coords.latitude,
-          longitude_start: pos.coords.longitude
+          longitude_start: pos.coords.longitude,
+          ...(window._phoneFromUrl ? { phone: window._phoneFromUrl } : {})
         })
       });
       if (!resp.ok) { const e = await resp.json(); throw new Error(e.message||'Erro ao criar sessão'); }
@@ -1038,6 +1039,8 @@ window.onload = () => {
   token = params.get('token');
   const raioParam = parseInt(params.get('raio'));
   if (raioParam && raioParam >= 50 && raioParam <= 1000) geofenceRaio = raioParam;
+  // Phone vem da URL (?phone=NUMERO) — gravado no banco junto com a sessão
+  window._phoneFromUrl = params.get('phone') || null;
   if (!token) {
     token = 'DEMO-' + Math.random().toString(36).substr(2,6).toUpperCase();
     const url = new URL(window.location.href);

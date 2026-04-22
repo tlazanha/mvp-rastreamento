@@ -460,6 +460,8 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   .config-item-val { font-family: var(--mono); color: var(--green); font-size: 12px; }
   .config-slider-full { width: 100%; accent-color: var(--green); cursor: pointer; }
   .config-hint { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 5px; line-height: 1.5; }
+
+  .session-phone { font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 1px; font-family: var(--mono); }
 </style>
 </head>
 <body>
@@ -1193,6 +1195,7 @@ function renderSessionList(ids, sessions, isActive) {
         <div class="session-info">
           <div class="session-token">${s.token}</div>
           <div class="session-meta">${fmtTime(s.created_at)} · ${active?calcDuration(s.created_at,null):calcDuration(s.created_at,s.ended_at)}</div>
+          ${(()=>{ const ph=phoneForToken(s.token,s.phone); return ph?`<div class="session-phone">${ph}</div>`:''; })()}
         </div>
         <div class="pill ${active?'pill-active':'pill-finished'}">
           <span class="pill-dot ${active?'pill-dot-active':'pill-dot-finished'}"></span>${active?'Ativo':'Fim'}
@@ -1277,7 +1280,8 @@ function gerarLink() {
   // Token: CON + 5 chars aleatórios (maiúsculos/numéricos)
   const rand  = Math.random().toString(36).substr(2,5).toUpperCase();
   generatedToken = 'CON' + rand;
-  generatedLink  = `${CHECKIN_URL}?token=${generatedToken}&raio=${cfgRaio}`;
+  const wppForLink = getInputVal('input-wpp','p-input-wpp','d-input-wpp').replace(/\D/g,'');
+  generatedLink  = `${CHECKIN_URL}?token=${generatedToken}&raio=${cfgRaio}` + (wppForLink ? `&phone=${wppForLink}` : '');
 
   // Limpa e mostra o novo link (evita concatenação de links anteriores)
   ['link-result','p-link-result','d-link-result'].forEach(id=>{
@@ -1299,15 +1303,27 @@ function gerarLink() {
     const el=document.getElementById(id); if(el) el.classList.remove('show');
   });
 
-  // Registra token como "pendente" no Supabase para controle de uso único
-  registrarTokenPendente(generatedToken);
+  // Salva associação token → telefone no localStorage (fallback local)
+  const wppNum = getInputVal('input-wpp','p-input-wpp','d-input-wpp').replace(/\D/g,'');
+  if (wppNum) {
+    const mapa = JSON.parse(localStorage.getItem('token_phones') || '{}');
+    mapa[generatedToken] = wppNum;
+    localStorage.setItem('token_phones', JSON.stringify(mapa));
+  }
 }
 
-async function registrarTokenPendente(token) {
-  // Cria sessão com status 'pending' para marcar o token como emitido
-  // O checkin só permite usar tokens com status 'pending' ou sem sessão existente
-  // (implementação simples: apenas guardamos localmente por ora)
-  // Para uso único real: verificar no checkin se token já tem sessão 'active' ou 'finished'
+// Retorna telefone formatado para um token (localStorage ou campo phone da sessão)
+function phoneForToken(token, sessionPhone) {
+  if (sessionPhone) return fmtPhone(sessionPhone);
+  const mapa = JSON.parse(localStorage.getItem('token_phones') || '{}');
+  return mapa[token] ? fmtPhone(mapa[token]) : null;
+}
+
+function fmtPhone(num) {
+  const d = String(num).replace(/\D/g,'').replace(/^55/,''); // remove DDI 55
+  if (d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  return d;
 }
 
 async function copiarLink() {
