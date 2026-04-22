@@ -48,15 +48,15 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   height: 100vh; overflow: hidden;
 }
 .sidebar-header { padding: 28px 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.07); flex-shrink: 0; }
-.sidebar-eyebrow { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.38); font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.sidebar-eyebrow { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.60); font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
 .sidebar-eyebrow::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.1); }
 .sidebar-brand { font-size: 18px; font-weight: 700; letter-spacing: -0.4px; }
-.sidebar-time  { margin-top: 4px; font-size: 11px; color: rgba(255,255,255,0.35); }
+.sidebar-time  { margin-top: 4px; font-size: 11px; color: rgba(255,255,255,0.55); }
 
 .sidebar-metrics { padding: 16px 24px; flex-shrink: 0; }
 .metric-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .metric-block { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 14px; }
-.metric-block-label { font-size: 10px; color: rgba(255,255,255,0.38); letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
+.metric-block-label { font-size: 10px; color: rgba(255,255,255,0.55); letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
 .metric-block-value { font-size: 24px; font-weight: 700; letter-spacing: -1px; display: flex; align-items: center; gap: 5px; }
 
 @keyframes ring  { 0%{box-shadow:0 0 0 0 rgba(108,79,204,0.5)} 60%{box-shadow:0 0 0 5px rgba(108,79,204,0)} 100%{box-shadow:0 0 0 0 rgba(108,79,204,0)} }
@@ -69,11 +69,11 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 .link-section { padding: 16px 24px; flex-shrink: 0; max-height: 40vh; overflow-y: auto; }
 .link-section::-webkit-scrollbar { width: 3px; }
 .link-section::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
-.link-section-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.38); font-weight: 600; margin-bottom: 12px; }
-.field-label  { font-size: 11px; color: rgba(255,255,255,0.5); font-weight: 500; margin-bottom: 5px; display: block; }
+.link-section-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.60); font-weight: 600; margin-bottom: 12px; }
+.field-label  { font-size: 11px; color: rgba(255,255,255,0.70); font-weight: 500; margin-bottom: 5px; display: block; }
 .field-input  { width: 100%; padding: 9px 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff; font-size: 13px; font-family: var(--sans); outline: none; margin-bottom: 8px; transition: border-color 0.15s; }
-.field-input::placeholder { color: rgba(255,255,255,0.25); }
-.field-input:focus { border-color: rgba(255,255,255,0.35); }
+.field-input::placeholder { color: rgba(255,255,255,0.35); }
+.field-input:focus { border-color: rgba(255,255,255,0.55); }
 .btn-gerar  { width: 100%; padding: 9px 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 13px; font-weight: 600; font-family: var(--sans); cursor: pointer; transition: background 0.15s; }
 .btn-gerar:hover { background: rgba(255,255,255,0.17); }
 .link-result { margin-top: 8px; padding: 9px 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); border-radius: 8px; font-size: 11px; font-family: var(--mono); color: rgba(255,255,255,0.5); word-break: break-all; line-height: 1.5; display: none; }
@@ -81,9 +81,9 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 .btn-copiar:hover { filter: brightness(1.1); }
 
 .hist-date-row  { display: flex; align-items: center; gap: 8px; margin-top: 16px; margin-bottom: 10px; }
-.hist-date-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.38); font-weight: 600; flex-shrink: 0; }
+.hist-date-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.60); font-weight: 600; flex-shrink: 0; }
 .hist-date-input { flex: 1; padding: 6px 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff; font-size: 12px; font-family: var(--mono); outline: none; transition: border-color 0.15s; cursor: pointer; color-scheme: dark; }
-.hist-date-input:focus { border-color: rgba(255,255,255,0.35); }
+.hist-date-input:focus { border-color: rgba(255,255,255,0.55); }
 .hist-date-today { padding: 5px 9px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 7px; color: rgba(255,255,255,0.6); font-size: 11px; font-weight: 600; font-family: var(--sans); cursor: pointer; white-space: nowrap; transition: background 0.15s; }
 .hist-date-today:hover { background: rgba(255,255,255,0.16); }
 
@@ -91,7 +91,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 .sessions-section::-webkit-scrollbar { width: 3px; }
 .sessions-section::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
 
-.sessions-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.38); font-weight: 600; margin: 16px 0 10px; display: flex; align-items: center; justify-content: space-between; }
+.sessions-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.60); font-weight: 600; margin: 16px 0 10px; display: flex; align-items: center; justify-content: space-between; }
 .tab-count { background: var(--green); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; }
 
 .session-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 14px; margin-bottom: 6px; cursor: pointer; transition: background 0.15s, border-color 0.15s; display: flex; align-items: center; gap: 10px; }
@@ -103,7 +103,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 .avatar-finished { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.4); }
 .session-info    { flex: 1; min-width: 0; }
 .session-token   { font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.session-meta    { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+.session-meta    { font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 2px; }
 
 .pill          { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; flex-shrink: 0; }
 .pill-active   { background: var(--green-bg); color: var(--green-text); }
@@ -112,7 +112,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 .pill-dot-active   { background: var(--green); animation: ring 2s infinite; }
 .pill-dot-finished { background: rgba(255,255,255,0.3); }
 
-.empty-sidebar { text-align: center; padding: 24px 0; color: rgba(255,255,255,0.25); font-size: 13px; }
+.empty-sidebar { text-align: center; padding: 24px 0; color: rgba(255,255,255,0.35); font-size: 13px; }
 
 .btn-apagar-hist { width: 100%; margin: 10px 0 20px; padding: 9px 12px; background: rgba(201,64,64,0.12); border: 1px solid rgba(201,64,64,0.3); border-radius: 8px; color: #f87171; font-size: 12px; font-weight: 600; font-family: var(--sans); cursor: pointer; transition: background 0.15s; display: none; }
 .btn-apagar-hist:hover { background: rgba(201,64,64,0.22); }
@@ -301,7 +301,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 
   /* Dentro dos drawers, sessions-section vira scroll normal */
   .drawer .sessions-section { flex: none; overflow: visible; padding: 0; }
-  .drawer .sessions-label   { color: rgba(255,255,255,0.38); margin-top: 8px; }
+  .drawer .sessions-label   { color: rgba(255,255,255,0.60); margin-top: 8px; }
   .drawer .hist-date-row    { margin-top: 8px; }
 
   /* Painel detalhe em mobile: ocupa mais largura */
@@ -440,7 +440,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   .sidebar-tab-btn {
     flex: 1; padding: 12px 0; background: none; border: none; cursor: pointer;
     font-family: var(--sans); font-size: 12px; font-weight: 600;
-    color: rgba(255,255,255,0.38); letter-spacing: 0.06em; text-transform: uppercase;
+    color: rgba(255,255,255,0.55); letter-spacing: 0.06em; text-transform: uppercase;
     border-bottom: 2px solid transparent; margin-bottom: -1px;
     transition: color 0.15s, border-color 0.15s;
   }
@@ -454,12 +454,12 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   .config-full::-webkit-scrollbar { width: 3px; }
   .config-full::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
   .config-group { margin-bottom: 24px; }
-  .config-group-title { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.38); font-weight: 600; margin-bottom: 14px; }
+  .config-group-title { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.60); font-weight: 600; margin-bottom: 14px; }
   .config-item { margin-bottom: 16px; }
   .config-item-label { font-size: 12px; color: rgba(255,255,255,0.7); font-weight: 600; margin-bottom: 8px; display: flex; justify-content: space-between; }
   .config-item-val { font-family: var(--mono); color: var(--green); font-size: 12px; }
   .config-slider-full { width: 100%; accent-color: var(--green); cursor: pointer; }
-  .config-hint { font-size: 11px; color: rgba(255,255,255,0.28); margin-top: 5px; line-height: 1.5; }
+  .config-hint { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 5px; line-height: 1.5; }
 </style>
 </head>
 <body>
