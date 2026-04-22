@@ -434,6 +434,32 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 
   /* ── Alerta de geofence (saiu do perímetro) ── */
   .pill-geo-alert { background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid rgba(245,158,11,0.4); animation: blink-red 1.2s ease-in-out infinite; }
+
+  /* ── Abas da sidebar (desktop) ── */
+  .sidebar-tabs { display: flex; flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .sidebar-tab-btn {
+    flex: 1; padding: 12px 0; background: none; border: none; cursor: pointer;
+    font-family: var(--sans); font-size: 12px; font-weight: 600;
+    color: rgba(255,255,255,0.38); letter-spacing: 0.06em; text-transform: uppercase;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .sidebar-tab-btn.active { color: #fff; border-bottom-color: var(--green); }
+  .sidebar-tab-btn:hover:not(.active) { color: rgba(255,255,255,0.65); }
+  .sidebar-panel { flex: 1; display: none; flex-direction: column; overflow: hidden; min-height: 0; }
+  .sidebar-panel.active { display: flex; }
+
+  /* ── Painel de config desktop ── */
+  .config-full { padding: 20px 24px; overflow-y: auto; flex: 1; }
+  .config-full::-webkit-scrollbar { width: 3px; }
+  .config-full::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+  .config-group { margin-bottom: 24px; }
+  .config-group-title { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.38); font-weight: 600; margin-bottom: 14px; }
+  .config-item { margin-bottom: 16px; }
+  .config-item-label { font-size: 12px; color: rgba(255,255,255,0.7); font-weight: 600; margin-bottom: 8px; display: flex; justify-content: space-between; }
+  .config-item-val { font-family: var(--mono); color: var(--green); font-size: 12px; }
+  .config-slider-full { width: 100%; accent-color: var(--green); cursor: pointer; }
+  .config-hint { font-size: 11px; color: rgba(255,255,255,0.28); margin-top: 5px; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -539,66 +565,102 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 <!-- ── Layout desktop ── -->
 <div class="layout">
   <nav class="sidebar">
+    <!-- Header fixo -->
     <div class="sidebar-header">
       <div class="sidebar-eyebrow">Sistema de Acesso</div>
       <div class="sidebar-brand">Portaria</div>
       <div class="sidebar-time" id="update-time">Atualizando…</div>
     </div>
-    <div class="sidebar-metrics">
-      <div class="metric-row">
-        <div class="metric-block">
-          <div class="metric-block-label">Ativos agora</div>
-          <div class="metric-block-value"><span class="live-dot"></span><span id="cnt-ativo">0</span></div>
+
+    <!-- Abas -->
+    <div class="sidebar-tabs">
+      <button class="sidebar-tab-btn active" id="stab-painel" onclick="switchSidebarTab('painel')">Painel</button>
+      <button class="sidebar-tab-btn" id="stab-config" onclick="switchSidebarTab('config')">Configurações</button>
+    </div>
+
+    <!-- ── Painel ── -->
+    <div class="sidebar-panel active" id="spanel-painel">
+      <div class="sidebar-metrics">
+        <div class="metric-row">
+          <div class="metric-block">
+            <div class="metric-block-label">Ativos agora</div>
+            <div class="metric-block-value"><span class="live-dot"></span><span id="cnt-ativo">0</span></div>
+          </div>
+          <div class="metric-block">
+            <div class="metric-block-label">Visitas hoje</div>
+            <div class="metric-block-value" id="cnt-hoje">0</div>
+          </div>
         </div>
-        <div class="metric-block">
-          <div class="metric-block-label">Visitas hoje</div>
-          <div class="metric-block-value" id="cnt-hoje">0</div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="link-section">
+        <div class="link-section-label">Gerar link de acesso</div>
+        <label class="field-label">Nome ou serviço</label>
+        <input class="field-input" type="text" id="input-nome" placeholder="Ex: Encanador, XPTO">
+        <label class="field-label" style="margin-top:4px;">WhatsApp do prestador</label>
+        <input class="field-input" type="tel" id="input-wpp" placeholder="Ex: 12999990000">
+        <button class="btn-gerar" onclick="gerarLink()">Gerar link de acesso</button>
+        <div class="link-result" id="link-result"></div>
+        <div class="link-used-badge" id="link-used">⚠ Este link já foi utilizado</div>
+        <button class="btn-copiar" id="btn-copiar" onclick="copiarLink()">Copiar link</button>
+        <button class="btn-whatsapp-send" id="btn-wpp-send" onclick="enviarWhatsApp()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.133 1.535 5.879L.057 23.487a.5.5 0 00.609.61l5.76-1.51A11.955 11.955 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.7-.51-5.26-1.44l-.38-.22-3.92 1.03 1.04-3.81-.24-.38A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+          Enviar por WhatsApp
+        </button>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sessions-section">
+        <div class="sessions-label">Prestadores ativos <span class="tab-count" id="badge-ativas" style="display:none">0</span></div>
+        <div id="list-ativas"><div class="empty-sidebar">Carregando…</div></div>
+        <div class="hist-date-row">
+          <span class="hist-date-label">Histórico</span>
+          <input type="date" class="hist-date-input" id="hist-date" onchange="onDateChange(this.value)">
+          <button class="hist-date-today" onclick="setToday()">Hoje</button>
+        </div>
+        <div id="list-historico"><div class="empty-sidebar">Carregando…</div></div>
+        <button class="btn-apagar-hist" id="btn-apagar-hist" onclick="showDeleteModal()">Apagar histórico do dia</button>
+      </div>
+      <div class="sidebar-footer"><span class="footer-dot"></span>Atualização a cada 5s</div>
+    </div>
+
+    <!-- ── Configurações ── -->
+    <div class="sidebar-panel" id="spanel-config">
+      <div class="config-full">
+        <div class="config-group">
+          <div class="config-group-title">Geofence</div>
+          <div class="config-item">
+            <div class="config-item-label">
+              Raio máximo
+              <span class="config-item-val" id="cfg-raio-val">200m</span>
+            </div>
+            <input type="range" class="config-slider-full" id="cfg-raio" min="50" max="500" step="50" value="200" oninput="updateConfig()">
+            <div class="config-hint">Distância máxima do ponto de entrada. Se o prestador ultrapassar esse raio, a sessão é encerrada automaticamente.</div>
+          </div>
+        </div>
+
+        <div class="config-group">
+          <div class="config-group-title">Alertas</div>
+          <div class="config-item">
+            <div class="config-item-label">
+              Limite de velocidade
+              <span class="config-item-val" id="cfg-vel-val">20 km/h</span>
+            </div>
+            <input type="range" class="config-slider-full" id="cfg-vel" min="10" max="60" step="5" value="20" oninput="updateConfig()">
+            <div class="config-hint">Acima desse limite o card do prestador pisca em vermelho e um alerta sonoro é emitido.</div>
+          </div>
+        </div>
+
+        <div class="config-group">
+          <div class="config-group-title">Sobre</div>
+          <div class="config-hint" style="line-height:1.7;">
+            As configurações são salvas localmente neste browser.<br>
+            Raio do geofence é incluído automaticamente no link gerado.<br><br>
+            <span style="opacity:0.5;">Sistema de Acesso · MVP v1</span>
+          </div>
         </div>
       </div>
+      <div class="sidebar-footer" style="border-top:1px solid rgba(255,255,255,0.07);"><span class="footer-dot"></span>Atualização a cada 5s</div>
     </div>
-    <div class="sidebar-divider"></div>
-    <div class="link-section">
-      <div class="link-section-label">Gerar link de acesso</div>
-      <label class="field-label">Nome ou serviço</label>
-      <input class="field-input" type="text" id="input-nome" placeholder="Ex: Encanador, XPTO">
-      <label class="field-label" style="margin-top:4px;">WhatsApp do prestador</label>
-      <input class="field-input" type="tel" id="input-wpp" placeholder="Ex: 12999990000">
-      <button class="btn-gerar" onclick="gerarLink()">Gerar link de acesso</button>
-      <div class="link-result" id="link-result"></div>
-      <div class="link-used-badge" id="link-used">⚠ Este link já foi utilizado</div>
-      <button class="btn-copiar" id="btn-copiar" onclick="copiarLink()">Copiar link</button>
-      <button class="btn-whatsapp-send" id="btn-wpp-send" onclick="enviarWhatsApp()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.133 1.535 5.879L.057 23.487a.5.5 0 00.609.61l5.76-1.51A11.955 11.955 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.7-.51-5.26-1.44l-.38-.22-3.92 1.03 1.04-3.81-.24-.38A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-        Enviar por WhatsApp
-      </button>
-    </div>
-    <div class="sidebar-divider"></div>
-    <div class="sessions-section">
-      <div class="sessions-label">Prestadores ativos <span class="tab-count" id="badge-ativas" style="display:none">0</span></div>
-      <div id="list-ativas"><div class="empty-sidebar">Carregando…</div></div>
-      <div class="hist-date-row">
-        <span class="hist-date-label">Histórico</span>
-        <input type="date" class="hist-date-input" id="hist-date" onchange="onDateChange(this.value)">
-        <button class="hist-date-today" onclick="setToday()">Hoje</button>
-      </div>
-      <div id="list-historico"><div class="empty-sidebar">Carregando…</div></div>
-      <button class="btn-apagar-hist" id="btn-apagar-hist" onclick="showDeleteModal()">Apagar histórico do dia</button>
-    </div>
-    <div class="sidebar-divider"></div>
-    <div class="config-section">
-      <div class="link-section-label">Configurações</div>
-      <div class="config-row">
-        <span class="config-label">Geofence (raio)</span>
-        <input type="range" class="config-slider" id="cfg-raio" min="50" max="500" step="50" value="200" oninput="updateConfig()">
-        <span class="config-val" id="cfg-raio-val">200m</span>
-      </div>
-      <div class="config-row">
-        <span class="config-label">Alerta velocidade</span>
-        <input type="range" class="config-slider" id="cfg-vel" min="10" max="60" step="5" value="20" oninput="updateConfig()">
-        <span class="config-val" id="cfg-vel-val">20 km/h</span>
-      </div>
-    </div>
-    <div class="sidebar-footer"><span class="footer-dot"></span>Atualização a cada 5s</div>
   </nav>
 
   <main class="main" id="main-map">
@@ -748,6 +810,14 @@ const TZ           = 'America/Sao_Paulo';
 // ── Configurações (persistidas no localStorage) ──
 let cfgRaio = 200;  // metros de geofence
 let cfgVel  = 20;   // km/h para alerta
+
+// ── Abas da sidebar desktop ──
+function switchSidebarTab(tab) {
+  ['painel','config'].forEach(t => {
+    document.getElementById(`stab-${t}`)?.classList.toggle('active', t === tab);
+    document.getElementById(`spanel-${t}`)?.classList.toggle('active', t === tab);
+  });
+}
 
 function loadConfig() {
   cfgRaio = parseInt(localStorage.getItem('cfg_raio') || '200');
