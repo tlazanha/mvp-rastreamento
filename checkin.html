@@ -886,14 +886,38 @@ function iniciarTimer() {
 // ── Check-in ──
 async function iniciarAcesso() {
   const btn = document.getElementById('btn-iniciar');
-  btn.innerHTML = 'Aguardando GPS… <span class="loader"></span>';
+  btn.innerHTML = 'Verificando… <span class="loader"></span>';
   btn.className = 'btn btn-disabled';
   hideError('error-msg');
+
+  // ── Verificação de uso único do token ──
+  try {
+    const check = await api(`sessions?token=eq.${token}&status=in.(active,finished)&select=id,status&limit=1`);
+    const existing = await check.json();
+    if (Array.isArray(existing) && existing.length > 0) {
+      const status = existing[0].status;
+      const msg = status === 'active'
+        ? 'Este link já está sendo usado por outra pessoa. Solicite um novo link à portaria.'
+        : 'Este link de acesso já foi utilizado. Solicite um novo link à portaria.';
+      showError('error-msg', msg);
+      // Bloqueia o botão permanentemente — link inválido
+      btn.innerHTML = 'Link já utilizado';
+      btn.className = 'btn btn-disabled';
+      // Desmarca o checkbox para deixar claro que não pode prosseguir
+      document.getElementById('termo-check').checked = false;
+      return;
+    }
+  } catch(e) {
+    // Falha na verificação — permite continuar (não bloqueia por erro de rede)
+    console.warn('Verificação de token falhou:', e);
+  }
 
   if (!navigator.geolocation) {
     showError('error-msg', 'Seu navegador não suporta geolocalização.');
     btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary'; return;
   }
+
+  btn.innerHTML = 'Aguardando GPS… <span class="loader"></span>';
 
   navigator.geolocation.getCurrentPosition(async (pos) => {
     try {

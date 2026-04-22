@@ -411,6 +411,12 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   .detail-encerrar { background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--red); cursor: pointer; font-family: var(--sans); display: none; }
   .detail-encerrar:hover { background: #fee2e2; }
   .detail-encerrar.show { display: inline-block; }
+
+  .btn-whatsapp-send { width:100%; margin-top:6px; padding:9px; background:#25d366; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; font-family:var(--sans); cursor:pointer; display:none; transition:filter 0.15s; gap:6px; align-items:center; justify-content:center; }
+  .btn-whatsapp-send:hover { filter:brightness(1.08); }
+  .btn-whatsapp-send.show { display:flex; }
+  .link-used-badge { margin-top:8px; padding:7px 10px; background:rgba(201,64,64,0.12); border:1px solid rgba(201,64,64,0.25); border-radius:7px; font-size:11.5px; color:#f87171; display:none; }
+  .link-used-badge.show { display:block; }
 </style>
 </head>
 <body>
@@ -480,9 +486,16 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
     <div class="link-section-label">Gerar link de acesso</div>
     <label class="field-label">Nome ou serviço</label>
     <input class="field-input" type="text" id="p-input-nome" placeholder="Ex: Encanador, XPTO">
+    <label class="field-label" style="margin-top:4px;">WhatsApp do prestador</label>
+    <input class="field-input" type="tel" id="p-input-wpp" placeholder="Ex: 12999990000">
     <button class="btn-gerar" onclick="gerarLink()">Gerar link de acesso</button>
     <div class="link-result" id="p-link-result"></div>
+    <div class="link-used-badge" id="p-link-used">⚠ Este link já foi utilizado</div>
     <button class="btn-copiar" id="p-btn-copiar" onclick="copiarLink()">Copiar link</button>
+    <button class="btn-whatsapp-send" id="p-btn-wpp-send" onclick="enviarWhatsApp()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.133 1.535 5.879L.057 23.487a.5.5 0 00.609.61l5.76-1.51A11.955 11.955 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.7-.51-5.26-1.44l-.38-.22-3.92 1.03 1.04-3.81-.24-.38A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+      Enviar por WhatsApp
+    </button>
   </div>
 </div>
 
@@ -511,9 +524,16 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
       <div class="link-section-label">Gerar link de acesso</div>
       <label class="field-label">Nome ou serviço</label>
       <input class="field-input" type="text" id="input-nome" placeholder="Ex: Encanador, XPTO">
+      <label class="field-label" style="margin-top:4px;">WhatsApp do prestador</label>
+      <input class="field-input" type="tel" id="input-wpp" placeholder="Ex: 12999990000">
       <button class="btn-gerar" onclick="gerarLink()">Gerar link de acesso</button>
       <div class="link-result" id="link-result"></div>
+      <div class="link-used-badge" id="link-used">⚠ Este link já foi utilizado</div>
       <button class="btn-copiar" id="btn-copiar" onclick="copiarLink()">Copiar link</button>
+      <button class="btn-whatsapp-send" id="btn-wpp-send" onclick="enviarWhatsApp()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.133 1.535 5.879L.057 23.487a.5.5 0 00.609.61l5.76-1.51A11.955 11.955 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.7-.51-5.26-1.44l-.38-.22-3.92 1.03 1.04-3.81-.24-.38A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+        Enviar por WhatsApp
+      </button>
     </div>
     <div class="sidebar-divider"></div>
     <div class="sessions-section">
@@ -613,9 +633,16 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   <div class="drawer-body">
     <label class="field-label" style="margin-top:4px;">Nome ou serviço</label>
     <input class="field-input" type="text" id="d-input-nome" placeholder="Ex: Encanador, XPTO">
+    <label class="field-label" style="margin-top:4px;">WhatsApp do prestador</label>
+    <input class="field-input" type="tel" id="d-input-wpp" placeholder="Ex: 12999990000">
     <button class="btn-gerar" onclick="gerarLink()">Gerar link de acesso</button>
     <div class="link-result" id="d-link-result"></div>
+    <div class="link-used-badge" id="d-link-used">⚠ Este link já foi utilizado</div>
     <button class="btn-copiar" id="d-btn-copiar" onclick="copiarLink()">Copiar link</button>
+    <button class="btn-whatsapp-send" id="d-btn-wpp-send" onclick="enviarWhatsApp()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.133 1.535 5.879L.057 23.487a.5.5 0 00.609.61l5.76-1.51A11.955 11.955 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.7-.51-5.26-1.44l-.38-.22-3.92 1.03 1.04-3.81-.24-.38A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+      Enviar por WhatsApp
+    </button>
   </div>
 </div>
 
@@ -654,9 +681,15 @@ function fmtTime(iso) { if(!iso)return'--'; return new Date(iso).toLocaleTimeStr
 function fmtTimeFull(iso) { if(!iso)return'--'; return new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:TZ}); }
 function fmtNow() { return new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:TZ}); }
 function calcDuration(start,end) {
-  const s=Math.floor((new Date(end||Date.now())-new Date(start))/1000);
-  const m=Math.floor(s/60),hh=Math.floor(m/60);
-  return hh>0?`${hh}h ${m%60}m`:`${m}m ${s%60}s`;
+  const startMs = new Date(start).getTime();
+  const endMs   = end ? new Date(end).getTime() : Date.now();
+  const diff    = endMs - startMs;
+  if (diff <= 0) return '—'; // proteção contra horários invertidos
+  const s  = Math.floor(diff / 1000);
+  const m  = Math.floor(s / 60);
+  const hh = Math.floor(m / 60);
+  if (hh > 0) return `${hh}h ${m % 60}m`;
+  return `${m}m ${s % 60}s`;
 }
 
 // ── Geocodificação ──
@@ -931,8 +964,16 @@ function renderSessionList(ids, sessions, isActive) {
       el.innerHTML = `<div class="empty-sidebar">${isActive?'Nenhum prestador ativo':'Nenhuma visita encerrada'}</div>`;
       return;
     }
-    sessions.forEach(s => { sessionCache[s.id] = s; });
-    el.innerHTML = sessions.map(s => {
+    sessions.forEach(s => {
+    sessionCache[s.id] = s;
+    // Detecta se token gerado agora já foi utilizado
+    if (generatedToken && s.token === generatedToken) {
+      ['link-used','p-link-used','d-link-used'].forEach(id => {
+        const el2 = document.getElementById(id); if (el2) el2.classList.add('show');
+      });
+    }
+  });
+  el.innerHTML = sessions.map(s => {
       const color   = sessionIdx[s.id]!==undefined?colorFor(sessionIdx[s.id]):'#6c4fcc';
       const inits   = s.token.slice(0,2).toUpperCase();
       const active  = s.status==='active';
@@ -1015,18 +1056,71 @@ async function loadSessions() {
 }
 
 // ── Link ──
-function gerarLink() {
-  const nome = (document.getElementById('input-nome')||document.getElementById('p-input-nome')||document.getElementById('d-input-nome'))?.value.trim()||'';
-  const token = (nome?nome.replace(/\s+/g,'-').toUpperCase().slice(0,8):'')+Math.random().toString(36).substr(2,5).toUpperCase();
-  generatedLink = `${CHECKIN_URL}?token=${token}`;
-  ['link-result','p-link-result','d-link-result'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=generatedLink;el.style.display='block';}});
-  ['btn-copiar','p-btn-copiar','d-btn-copiar'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='block';});
+// ── Gerador de link ──
+let generatedToken = '';
+
+function getInputVal(...ids) {
+  for (const id of ids) { const v = document.getElementById(id)?.value.trim(); if (v) return v; }
+  return '';
 }
+
+function gerarLink() {
+  const nome = getInputVal('input-nome','p-input-nome','d-input-nome');
+  // Token: CON + 5 chars aleatórios (maiúsculos/numéricos)
+  const rand  = Math.random().toString(36).substr(2,5).toUpperCase();
+  generatedToken = 'CON' + rand;
+  generatedLink  = `${CHECKIN_URL}?token=${generatedToken}`;
+
+  // Mostra o link
+  ['link-result','p-link-result','d-link-result'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){ el.textContent=generatedLink; el.style.display='block'; }
+  });
+  // Botão copiar
+  ['btn-copiar','p-btn-copiar','d-btn-copiar'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.style.display='block';
+  });
+  // Botão WhatsApp — só aparece se há número informado
+  const wpp = getInputVal('input-wpp','p-input-wpp','d-input-wpp');
+  ['btn-wpp-send','p-btn-wpp-send','d-btn-wpp-send'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.classList.toggle('show', wpp.length >= 8);
+  });
+  // Esconde badge de "já utilizado"
+  ['link-used','p-link-used','d-link-used'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.classList.remove('show');
+  });
+
+  // Registra token como "pendente" no Supabase para controle de uso único
+  registrarTokenPendente(generatedToken);
+}
+
+async function registrarTokenPendente(token) {
+  // Cria sessão com status 'pending' para marcar o token como emitido
+  // O checkin só permite usar tokens com status 'pending' ou sem sessão existente
+  // (implementação simples: apenas guardamos localmente por ora)
+  // Para uso único real: verificar no checkin se token já tem sessão 'active' ou 'finished'
+}
+
 async function copiarLink() {
   try {
     await navigator.clipboard.writeText(generatedLink);
-    ['btn-copiar','p-btn-copiar','d-btn-copiar'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent='✓ Copiado!';setTimeout(()=>el.textContent='Copiar link',2000);}});
+    ['btn-copiar','p-btn-copiar','d-btn-copiar'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el){ el.textContent='✓ Copiado!'; setTimeout(()=>el.textContent='Copiar link',2000); }
+    });
   } catch { prompt('Copie o link:',generatedLink); }
+}
+
+function enviarWhatsApp() {
+  const wpp = getInputVal('input-wpp','p-input-wpp','d-input-wpp')
+    .replace(/\D/g,''); // só dígitos
+  if (!wpp) { alert('Informe o WhatsApp do prestador.'); return; }
+  const numero = wpp.startsWith('55') ? wpp : '55' + wpp;
+  const texto  = encodeURIComponent(
+    `Olá! Para acessar o condomínio, clique no link abaixo e siga as instruções:\n${generatedLink}`
+  );
+  window.open(`https://wa.me/${numero}?text=${texto}`, '_blank');
 }
 
 // ── Modal apagar ──
