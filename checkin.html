@@ -382,6 +382,37 @@
   .summary-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); font-weight: 700; margin-bottom: 4px; }
   .summary-value { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.2px; }
 
+  /* ── Botão Fale com a Portaria ── */
+  .btn-portaria {
+    width: 100%;
+    padding: 14px;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.1s;
+    letter-spacing: -0.1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-decoration: none;
+    border: none;
+  }
+  .btn-portaria:active { transform: scale(0.975); }
+  .btn-whatsapp { background: #25d366; color: #fff; }
+  .btn-whatsapp:hover { filter: brightness(1.08); }
+  .btn-ligacao  { background: transparent; color: var(--text-2); border: 1.5px solid var(--border-mid); }
+  .btn-ligacao:hover  { background: var(--bg); }
+  .btn-portaria svg { width: 20px; height: 20px; flex-shrink: 0; }
+  .portaria-divider {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11px; color: var(--text-3); margin: 2px 0;
+  }
+  .portaria-divider::before,
+  .portaria-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+
   /* ── LGPD note ── */
   .lgpd-note {
     font-size: 11.5px;
@@ -570,7 +601,20 @@
 
     <div class="spacer"></div>
 
-    <button class="btn btn-danger" onclick="confirmarEncerramento()">
+    <!-- Fale com a Portaria -->
+    <a class="btn-portaria btn-whatsapp" href="https://wa.me/5512997551507" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.133 1.535 5.879L.057 23.487a.5.5 0 00.609.61l5.76-1.51A11.955 11.955 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.7-.51-5.26-1.44l-.38-.22-3.92 1.03 1.04-3.81-.24-.38A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+      Fale com a Portaria
+    </a>
+
+    <div class="portaria-divider">ou</div>
+
+    <a class="btn-portaria btn-ligacao" href="tel:+5512997551507">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.7A2 2 0 012.18 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.15 6.15l1.27-.52a2 2 0 012.11.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      Ligar para a Portaria
+    </a>
+
+    <button class="btn btn-danger" onclick="confirmarEncerramento()" style="margin-top:8px;">
       Encerrar visita
     </button>
     <p class="lgpd-note" style="margin-bottom:8px;">Seu rastreamento será encerrado ao sair</p>
