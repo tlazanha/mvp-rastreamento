@@ -1118,8 +1118,7 @@ function enviarWhatsApp() {
   if (!wpp) { alert('Informe o WhatsApp do prestador.'); return; }
   const numero = wpp.startsWith('55') ? wpp : '55' + wpp;
   // Monta mensagem com o link atual (generatedLink é sempre o último gerado)
-  const mensagem = 'Olá! Para acessar o condomínio, clique no link abaixo e siga as instruções:
-' + generatedLink;
+  const mensagem = 'Olá! Para acessar o condomínio, clique no link abaixo e siga as instruções:\n' + generatedLink;
   const texto = encodeURIComponent(mensagem);
   // 'whatsapp_portaria' como nome fixo reutiliza a mesma aba se já estiver aberta
   window.open('https://wa.me/' + numero + '?text=' + texto, 'whatsapp_portaria');
