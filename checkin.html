@@ -634,8 +634,8 @@
       <span class="eyebrow-line"></span>
       Visita encerrada
     </div>
-    <div class="header-title">Obrigado pela visita</div>
-    <div class="header-sub">Seu acesso foi registrado com sucesso</div>
+    <div class="header-title" id="header-title-end">Obrigado pela visita</div>
+    <div class="header-sub" id="header-sub-end">Seu acesso foi registrado com sucesso</div>
   </div>
 
   <div class="body">
@@ -680,6 +680,12 @@ let sessionStart = null;
 let pontos = 0, timelineItems = [];
 let lastSentLat = null, lastSentLng = null;
 let currentSpeed = 0; // velocidade atual suavizada em km/h
+
+// ── Geofence ──
+let geofenceLat  = null; // coordenada inicial (centro do geofence)
+let geofenceLng  = null;
+let geofenceRaio = 200;  // metros — lido da URL (?raio=N)
+let geofenceAtivo = false;
 
 // Janela deslizante de posições para cálculo de velocidade suavizada
 // Guarda os últimos N pontos com { lat, lng, ts }
@@ -833,6 +839,18 @@ function iniciarGravacao() {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
 
+        // ── Verifica geofence ──
+        if (geofenceAtivo && geofenceLat !== null) {
+          const distOrigem = distMeters(geofenceLat, geofenceLng, lat, lng);
+          if (distOrigem > geofenceRaio) {
+            // Saiu do perímetro — encerra automaticamente
+            addTimeline('⚠', `Saiu do perímetro (${Math.round(distOrigem)}m)`, fmtHora());
+            showError('error-gps', `⚠ Você saiu do perímetro do condomínio (${Math.round(distOrigem)}m do ponto de entrada). Sessão encerrada automaticamente.`);
+            await encerrarGeofence();
+            return;
+          }
+        }
+
         // Só grava se moveu mais de 5 metros
         if (lastSentLat !== null) {
           const dist = distMeters(lastSentLat, lastSentLng, lat, lng);
@@ -949,10 +967,16 @@ async function iniciarAcesso() {
       lastSentLng = pos.coords.longitude;
       pontos = 1;
 
+      // Ativa geofence com ponto de entrada como centro
+      geofenceLat  = pos.coords.latitude;
+      geofenceLng  = pos.coords.longitude;
+      geofenceAtivo = true;
+
       showScreen('screen-ativo');
       document.getElementById('ativo-inicio').textContent = `Iniciado às ${fmtHoraMin(sessionStart)}`;
       document.getElementById('stat-pts').textContent = pontos;
-      addTimeline('✓', 'Check-in realizado', fmtHora());
+      // Mostra raio configurado na timeline
+      addTimeline('✓', `Check-in · Geofence ${geofenceRaio}m ativo`, fmtHora());
 
       await ativarWakeLock();
       iniciarWatchVelocidade();
@@ -979,7 +1003,13 @@ async function confirmarEncerramento() {
   await encerrar();
 }
 
-async function encerrar() {
+// Encerramento automático por geofence — sem confirmação
+async function encerrarGeofence() {
+  geofenceAtivo = false;
+  await encerrar('geofence');
+}
+
+async function encerrar(motivo) {
   clearInterval(timerInterval);
   clearInterval(trackInterval);
   if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
@@ -995,13 +1025,19 @@ async function encerrar() {
   document.getElementById('res-fim').textContent     = fmtHoraMin(fim);
   document.getElementById('res-duracao').textContent = calcDuration(sessionStart, fim);
   document.getElementById('res-pts').textContent     = pontos;
+  if (motivo === 'geofence') {
+    document.getElementById('header-title-end').textContent = 'Sessão encerrada';
+    document.getElementById('header-sub-end').textContent   = 'Você saiu do perímetro do condomínio.';
+  }
   showScreen('screen-encerrado');
 }
 
 // ── Boot ──
-function getToken() { return new URLSearchParams(window.location.search).get('token'); }
 window.onload = () => {
-  token = getToken();
+  const params = new URLSearchParams(window.location.search);
+  token = params.get('token');
+  const raioParam = parseInt(params.get('raio'));
+  if (raioParam && raioParam >= 50 && raioParam <= 1000) geofenceRaio = raioParam;
   if (!token) {
     token = 'DEMO-' + Math.random().toString(36).substr(2,6).toUpperCase();
     const url = new URL(window.location.href);
