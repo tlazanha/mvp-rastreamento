@@ -66,7 +66,9 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 
 .sidebar-divider { height: 1px; background: rgba(255,255,255,0.07); margin: 0 24px; flex-shrink: 0; }
 
-.link-section { padding: 16px 24px; flex-shrink: 0; }
+.link-section { padding: 16px 24px; flex-shrink: 0; max-height: 40vh; overflow-y: auto; }
+.link-section::-webkit-scrollbar { width: 3px; }
+.link-section::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
 .link-section-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.38); font-weight: 600; margin-bottom: 12px; }
 .field-label  { font-size: 11px; color: rgba(255,255,255,0.5); font-weight: 500; margin-bottom: 5px; display: block; }
 .field-input  { width: 100%; padding: 9px 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff; font-size: 13px; font-family: var(--sans); outline: none; margin-bottom: 8px; transition: border-color 0.15s; }
@@ -1121,7 +1123,8 @@ function enviarWhatsApp() {
   const mensagem = 'Olá! Para acessar o condomínio, clique no link abaixo e siga as instruções:
 ' + generatedLink;
   const texto = encodeURIComponent(mensagem);
-  window.open('https://wa.me/' + numero + '?text=' + texto, '_blank');
+  // 'whatsapp_portaria' como nome fixo reutiliza a mesma aba se já estiver aberta
+  window.open('https://wa.me/' + numero + '?text=' + texto, 'whatsapp_portaria');
 }
 
 // ── Modal apagar ──
