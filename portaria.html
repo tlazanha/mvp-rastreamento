@@ -1320,9 +1320,23 @@ function phoneForToken(token, sessionPhone) {
 }
 
 function fmtPhone(num) {
-  const d = String(num).replace(/\D/g,'').replace(/^55/,''); // remove DDI 55
-  if (d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
-  if (d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  const d = String(num).replace(/\D/g, '').replace(/^55/, ''); // remove DDI 55
+  if (d.length === 11) {
+    // 11 dígitos: DDD (2) + celular (9) → (XX) 9XXXX-XXXX
+    return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+  }
+  if (d.length === 10) {
+    // 10 dígitos: DDD (2) + número (8)
+    // Se 3º dígito >= 6 provavelmente é celular digitado sem o nono → 5+4 não aplicável, usa 4+4
+    // Se 3º dígito for 9 especificamente → celular sem nono dígito
+    const third = d[2];
+    if (third === '9') {
+      // Celular sem nono dígito: (XX) 9XXX-XXXX
+      return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+    }
+    // Fixo: (XX) XXXX-XXXX
+    return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  }
   return d;
 }
 
