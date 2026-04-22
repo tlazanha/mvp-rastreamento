@@ -760,7 +760,7 @@ const COLORS = ['#6c4fcc','#2563eb','#059669','#d97706','#dc2626','#7c3aed','#08
 function colorFor(idx) { return COLORS[idx % COLORS.length]; }
 
 let map, markers={}, polylines={}, sessionIdx={}, colorCount=0;
-let selectedId=null, historyLayer=null, generatedLink='';
+let selectedId=null, historyLayer=null, generatedLink='', generatedToken='';
 const sessionCache = {};
 
 function initMap() {
@@ -1059,8 +1059,6 @@ async function loadSessions() {
 
 // ── Link ──
 // ── Gerador de link ──
-let generatedToken = '';
-
 function getInputVal(...ids) {
   for (const id of ids) { const v = document.getElementById(id)?.value.trim(); if (v) return v; }
   return '';
