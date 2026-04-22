@@ -1071,10 +1071,10 @@ function gerarLink() {
   generatedToken = 'CON' + rand;
   generatedLink  = `${CHECKIN_URL}?token=${generatedToken}`;
 
-  // Mostra o link
+  // Limpa e mostra o novo link (evita concatenação de links anteriores)
   ['link-result','p-link-result','d-link-result'].forEach(id=>{
     const el=document.getElementById(id);
-    if(el){ el.textContent=generatedLink; el.style.display='block'; }
+    if(el){ el.textContent=''; el.textContent=generatedLink; el.style.display='block'; }
   });
   // Botão copiar
   ['btn-copiar','p-btn-copiar','d-btn-copiar'].forEach(id=>{
@@ -1117,10 +1117,11 @@ function enviarWhatsApp() {
     .replace(/\D/g,''); // só dígitos
   if (!wpp) { alert('Informe o WhatsApp do prestador.'); return; }
   const numero = wpp.startsWith('55') ? wpp : '55' + wpp;
-  const texto  = encodeURIComponent(
-    `Olá! Para acessar o condomínio, clique no link abaixo e siga as instruções:\n${generatedLink}`
-  );
-  window.open(`https://wa.me/${numero}?text=${texto}`, '_blank');
+  // Monta mensagem com o link atual (generatedLink é sempre o último gerado)
+  const mensagem = 'Olá! Para acessar o condomínio, clique no link abaixo e siga as instruções:
+' + generatedLink;
+  const texto = encodeURIComponent(mensagem);
+  window.open('https://wa.me/' + numero + '?text=' + texto, '_blank');
 }
 
 // ── Modal apagar ──
