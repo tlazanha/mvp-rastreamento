@@ -548,11 +548,6 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   <div style="padding:16px;">
     <div class="link-section-label" style="margin-bottom:14px;">Configurações</div>
     <div class="config-row">
-      <span class="config-label">Geofence (raio)</span>
-      <input type="range" class="config-slider" id="p-cfg-raio" min="50" max="500" step="50" value="200" oninput="updateConfig(this)" onchange="updateConfig(this)">
-      <span class="config-val" id="p-cfg-raio-val">200m</span>
-    </div>
-    <div class="config-row">
       <span class="config-label">Alerta velocidade</span>
       <input type="range" class="config-slider" id="p-cfg-vel" min="10" max="60" step="5" value="20" oninput="updateConfig(this)" onchange="updateConfig(this)">
       <span class="config-val" id="p-cfg-vel-val">20 km/h</span>
@@ -644,20 +639,24 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
       <div class="config-full">
         <div class="config-group">
           <div class="config-group-title">Geofence</div>
-          <div class="config-item">
-            <div class="config-item-label">
-              Raio circular (fallback)
-              <span class="config-item-val" id="cfg-raio-val">200m</span>
-            </div>
-            <input type="range" class="config-slider-full" id="cfg-raio" min="50" max="500" step="50" value="200" oninput="updateConfig(this)" onchange="updateConfig(this)">
-            <div class="config-hint">Usado quando nenhum perímetro personalizado está definido.</div>
-          </div>
+
           <div class="config-item">
             <div class="config-item-label">Perímetro do condomínio</div>
-            <div class="fence-status" id="fence-status">Nenhum perímetro definido</div>
-            <button class="fence-btn" id="fence-draw-btn" onclick="iniciarDesenhoFence()">
+            <div class="fence-status" id="fence-status">Carregando…</div>
+            <button class="fence-btn" id="fence-draw-btn" onclick="iniciarDesenhoFence()" style="margin-top:10px;">
               ✏ Desenhar perímetro no mapa
             </button>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button class="fence-btn" id="fence-view-btn" onclick="visualizarFence()" style="display:none;flex:1;background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);">
+                👁 Visualizar
+              </button>
+              <button class="fence-btn" id="fence-del-btn" onclick="deletarFence()" style="display:none;flex:1;background:rgba(201,64,64,0.1);border-color:rgba(201,64,64,0.3);color:#f87171;">
+                🗑 Deletar
+              </button>
+            </div>
+            <div class="config-hint" id="fence-hint" style="margin-top:10px;">
+              O perímetro é salvo no banco e compartilhado entre todos os dispositivos da portaria.
+            </div>
           </div>
         </div>
 
@@ -776,11 +775,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   <div class="drawer-handle"></div>
   <div class="drawer-title">Configurações</div>
   <div class="drawer-body">
-    <div class="config-row" style="margin-top:8px;">
-      <span class="config-label">Geofence (raio)</span>
-      <input type="range" class="config-slider" id="d-cfg-raio" min="50" max="500" step="50" value="200" oninput="updateConfig(this)" onchange="updateConfig(this)">
-      <span class="config-val" id="d-cfg-raio-val">200m</span>
-    </div>
+
     <div class="config-row">
       <span class="config-label">Alerta velocidade</span>
       <input type="range" class="config-slider" id="d-cfg-vel" min="10" max="60" step="5" value="20" oninput="updateConfig(this)" onchange="updateConfig(this)">
@@ -836,8 +831,7 @@ const CHECKIN_URL  = window.location.origin + '/checkin.html';
 const TZ           = 'America/Sao_Paulo';
 
 // ── Configurações (persistidas no localStorage) ──
-let cfgRaio = 200;  // metros de geofence
-let cfgVel  = 20;   // km/h para alerta
+let cfgVel = 20;   // km/h para alerta
 
 // ── Abas da sidebar desktop ──
 function switchSidebarTab(tab) {
@@ -848,15 +842,7 @@ function switchSidebarTab(tab) {
 }
 
 function loadConfig() {
-  cfgRaio = parseInt(localStorage.getItem('cfg_raio') || '200');
-  cfgVel  = parseInt(localStorage.getItem('cfg_vel')  || '20');
-  // Sincroniza todos os sliders
-  ['cfg-raio','d-cfg-raio','p-cfg-raio'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = cfgRaio;
-  });
-  ['cfg-raio-val','d-cfg-raio-val','p-cfg-raio-val'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.textContent = cfgRaio + 'm';
-  });
+  cfgVel = parseInt(localStorage.getItem('cfg_vel') || '20');
   ['cfg-vel','d-cfg-vel','p-cfg-vel'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = cfgVel;
   });
@@ -866,15 +852,12 @@ function loadConfig() {
 }
 
 function updateConfig(el) {
-  // el é o slider que disparou o evento — funciona em desktop e mobile touch
   if (!el) return;
   const id  = el.id;
   const val = parseInt(el.value);
-  if (['cfg-raio','d-cfg-raio','p-cfg-raio'].includes(id)) cfgRaio = val;
-  if (['cfg-vel', 'd-cfg-vel', 'p-cfg-vel' ].includes(id)) cfgVel  = val;
-  localStorage.setItem('cfg_raio', cfgRaio);
-  localStorage.setItem('cfg_vel',  cfgVel);
-  loadConfig(); // sincroniza todos os displays
+  if (['cfg-vel','d-cfg-vel','p-cfg-vel'].includes(id)) cfgVel = val;
+  localStorage.setItem('cfg_vel', cfgVel);
+  loadConfig();
 }
 
 // ── Geofence por polígono ──
@@ -898,13 +881,29 @@ function pontoNoPoly(lat, lng, poly) {
   return inside;
 }
 
-function carregarFenceSalvo() {
-  const saved = localStorage.getItem('fence_polygon');
-  if (saved) {
-    fencePolygon = JSON.parse(saved);
-    exibirFenceNoMapa(fencePolygon);
-    atualizarFenceStatus();
+async function carregarFenceSalvo() {
+  try {
+    // Tenta buscar do Supabase primeiro
+    const r = await api('config?key=eq.fence_polygon&select=value');
+    const rows = await r.json();
+    if (Array.isArray(rows) && rows.length > 0) {
+      fencePolygon = JSON.parse(rows[0].value);
+      // Sincroniza localStorage como cache
+      localStorage.setItem('fence_polygon', rows[0].value);
+    } else {
+      // Fallback: localStorage (se Supabase vazio mas tem local)
+      const local = localStorage.getItem('fence_polygon');
+      if (local) fencePolygon = JSON.parse(local);
+    }
+  } catch {
+    // Offline: usa localStorage
+    const local = localStorage.getItem('fence_polygon');
+    if (local) fencePolygon = JSON.parse(local);
   }
+  if (fencePolygon) {
+    exibirFenceNoMapa(fencePolygon);
+  }
+  atualizarFenceStatus();
 }
 
 function exibirFenceNoMapa(poly) {
@@ -918,15 +917,22 @@ function exibirFenceNoMapa(poly) {
 }
 
 function atualizarFenceStatus() {
-  const el = document.getElementById('fence-status');
-  const btn = document.getElementById('fence-draw-btn');
+  const el      = document.getElementById('fence-status');
+  const drawBtn = document.getElementById('fence-draw-btn');
+  const viewBtn = document.getElementById('fence-view-btn');
+  const delBtn  = document.getElementById('fence-del-btn');
   if (!el) return;
-  if (fencePolygon && fencePolygon.length >= 3) {
-    el.innerHTML = `<strong>${fencePolygon.length} pontos definidos</strong> · Perímetro ativo`;
-    if (btn) { btn.textContent = '✏ Redesenhar perímetro'; }
+  const temFence = fencePolygon && fencePolygon.length >= 3;
+  if (temFence) {
+    el.innerHTML = `<strong style="color:#a78bfa">${fencePolygon.length} pontos definidos</strong> · <span style="color:rgba(255,255,255,0.6)">Geofence ativo</span>`;
+    if (drawBtn) drawBtn.textContent = '✏ Redesenhar perímetro';
+    if (viewBtn) viewBtn.style.display = 'block';
+    if (delBtn)  delBtn.style.display  = 'block';
   } else {
-    el.textContent = 'Nenhum perímetro definido — usando raio circular';
-    if (btn) { btn.textContent = '✏ Desenhar perímetro no mapa'; }
+    el.innerHTML = 'Nenhum perímetro definido<br><span style="opacity:0.6">Geofence automático desativado</span>';
+    if (drawBtn) drawBtn.textContent = '✏ Desenhar perímetro no mapa';
+    if (viewBtn) viewBtn.style.display = 'none';
+    if (delBtn)  delBtn.style.display  = 'none';
   }
 }
 
@@ -980,14 +986,28 @@ function desenharFenceEdicao() {
   fenceEditLayer = L.layerGroup(layers).addTo(map);
 }
 
-function salvarFence() {
+async function salvarFence() {
   if (fencePoints.length < 3) return;
+  const btn = document.getElementById('fence-bar-save');
+  btn.textContent = 'Salvando…'; btn.disabled = true;
   fencePolygon = [...fencePoints];
-  localStorage.setItem('fence_polygon', JSON.stringify(fencePolygon));
+  const val = JSON.stringify(fencePolygon);
+  try {
+    // Upsert no Supabase (insere ou substitui pela chave)
+    await api('config', {
+      method: 'POST',
+      extraHeaders: { 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ key: 'fence_polygon', value: val, updated_at: new Date().toISOString() })
+    });
+    localStorage.setItem('fence_polygon', val);
+  } catch(e) {
+    // Falha no banco — salva só local com aviso
+    localStorage.setItem('fence_polygon', val);
+    console.warn('Fence salvo apenas localmente:', e);
+  }
   cancelarFence();
   exibirFenceNoMapa(fencePolygon);
   atualizarFenceStatus();
-  // Muda de volta para aba config
   switchSidebarTab('config');
 }
 
@@ -1000,12 +1020,35 @@ function cancelarFence() {
   fencePoints = [];
 }
 
-function limparFence() {
+async function deletarFence() {
+  if (!confirm('Deletar o perímetro salvo? Esta ação não pode ser desfeita.')) return;
+  const btn = document.getElementById('fence-del-btn');
+  btn.textContent = 'Deletando…'; btn.disabled = true;
+  try {
+    await api('config?key=eq.fence_polygon', { method: 'DELETE' });
+  } catch(e) { console.warn('Erro ao deletar fence:', e); }
   fencePolygon = null;
   localStorage.removeItem('fence_polygon');
   if (fenceLayer) { map.removeLayer(fenceLayer); fenceLayer = null; }
+  btn.textContent = '🗑 Deletar'; btn.disabled = false;
   atualizarFenceStatus();
 }
+
+function visualizarFence() {
+  if (!fencePolygon || fencePolygon.length < 3) return;
+  // Muda para painel e centraliza o mapa no polígono
+  switchSidebarTab('painel');
+  setTimeout(() => {
+    if (fenceLayer) {
+      map.fitBounds(fenceLayer.getBounds().pad(0.2));
+    } else {
+      exibirFenceNoMapa(fencePolygon);
+      setTimeout(() => fenceLayer && map.fitBounds(fenceLayer.getBounds().pad(0.2)), 100);
+    }
+  }, 100);
+}
+
+function limparFence() { deletarFence(); }
 
 // ── Alerta sonoro (Web Audio API) ──
 let audioCtx = null;
@@ -1434,7 +1477,7 @@ function gerarLink() {
   const fenceParam = fencePolygon && fencePolygon.length >= 3
     ? '&fence=' + encodeURIComponent(JSON.stringify(fencePolygon))
     : '';
-  generatedLink  = `${CHECKIN_URL}?token=${generatedToken}&raio=${cfgRaio}` + (wppForLink ? `&phone=${wppForLink}` : '') + fenceParam;
+  generatedLink  = `${CHECKIN_URL}?token=${generatedToken}` + (wppForLink ? `&phone=${wppForLink}` : '') + fenceParam;
 
   // Limpa e mostra o novo link (evita concatenação de links anteriores)
   ['link-result','p-link-result','d-link-result'].forEach(id=>{

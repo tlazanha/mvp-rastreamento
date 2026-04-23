@@ -681,10 +681,7 @@ let pontos = 0, timelineItems = [];
 let lastSentLat = null, lastSentLng = null;
 let currentSpeed = 0; // velocidade atual suavizada em km/h
 
-// ── Geofence ──
-let geofenceLat  = null; // coordenada inicial (centro do geofence)
-let geofenceLng  = null;
-let geofenceRaio = 200;  // metros — lido da URL (?raio=N)
+// ── Geofence (só polígono — sem raio circular) ──
 let geofenceAtivo = false;
 
 // Janela deslizante de posições para cálculo de velocidade suavizada
@@ -852,17 +849,8 @@ function iniciarGravacao() {
         const lng = pos.coords.longitude;
 
         // ── Verifica geofence ──
-        if (geofenceAtivo) {
-          let saiu = false;
-          if (window._fencePolygon && window._fencePolygon.length >= 3) {
-            // Modo polígono: ray casting
-            saiu = !pontoNoPolyCheckin(lat, lng, window._fencePolygon);
-          } else if (geofenceLat !== null) {
-            // Modo raio circular (fallback)
-            const distOrigem = distMeters(geofenceLat, geofenceLng, lat, lng);
-            saiu = distOrigem > geofenceRaio;
-          }
-          if (saiu) {
+        if (geofenceAtivo && window._fencePolygon && window._fencePolygon.length >= 3) {
+          if (!pontoNoPolyCheckin(lat, lng, window._fencePolygon)) {
             addTimeline('⚠', 'Saiu do perímetro', fmtHora());
             showError('error-gps', '⚠ Você saiu do perímetro do condomínio. Sessão encerrada automaticamente.');
             await encerrarGeofence();
@@ -987,16 +975,15 @@ async function iniciarAcesso() {
       lastSentLng = pos.coords.longitude;
       pontos = 1;
 
-      // Ativa geofence com ponto de entrada como centro
-      geofenceLat  = pos.coords.latitude;
-      geofenceLng  = pos.coords.longitude;
+      // Ativa geofence (polígono carregado da URL)
       geofenceAtivo = true;
 
       showScreen('screen-ativo');
       document.getElementById('ativo-inicio').textContent = `Iniciado às ${fmtHoraMin(sessionStart)}`;
       document.getElementById('stat-pts').textContent = pontos;
       // Mostra raio configurado na timeline
-      addTimeline('✓', `Check-in · Geofence ${geofenceRaio}m ativo`, fmtHora());
+      const fenceInfo = window._fencePolygon ? `Geofence ativo (${window._fencePolygon.length} pts)` : 'Sem geofence';
+      addTimeline('✓', `Check-in · ${fenceInfo}`, fmtHora());
 
       await ativarWakeLock();
       iniciarWatchVelocidade();
@@ -1029,7 +1016,7 @@ async function encerrarGeofence() {
   await encerrar('geofence');
 }
 
-async function encerrar(motivo) {
+async function encerrar(motivo='manual') {
   clearInterval(timerInterval);
   clearInterval(trackInterval);
   if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
@@ -1056,11 +1043,9 @@ async function encerrar(motivo) {
 window.onload = () => {
   const params = new URLSearchParams(window.location.search);
   token = params.get('token');
-  const raioParam = parseInt(params.get('raio'));
-  if (raioParam && raioParam >= 50 && raioParam <= 1000) geofenceRaio = raioParam;
   // Phone vem da URL (?phone=NUMERO) — gravado no banco junto com a sessão
   window._phoneFromUrl = params.get('phone') || null;
-  // Polígono de geofence — se presente, substitui o raio circular
+  // Polígono de geofence
   const fenceRaw = params.get('fence');
   window._fencePolygon = fenceRaw ? JSON.parse(decodeURIComponent(fenceRaw)) : null;
   if (!token) {
