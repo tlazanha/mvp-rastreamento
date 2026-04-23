@@ -1483,10 +1483,8 @@ function gerarLink() {
   const rand  = Math.random().toString(36).substr(2,5).toUpperCase();
   generatedToken = 'CON' + rand;
   const wppForLink = getInputVal('input-wpp','p-input-wpp','d-input-wpp').replace(/\D/g,'');
-  const fenceParam = fencePolygon && fencePolygon.length >= 3
-    ? '&fence=' + encodeURIComponent(JSON.stringify(fencePolygon))
-    : '';
-  generatedLink  = `${CHECKIN_URL}?token=${generatedToken}` + (wppForLink ? `&phone=${wppForLink}` : '') + fenceParam;
+  // Fence vem do Supabase no checkin — não precisa ir na URL
+  generatedLink  = `${CHECKIN_URL}?token=${generatedToken}` + (wppForLink ? `&phone=${wppForLink}` : '');
 
   // Limpa e mostra o novo link (evita concatenação de links anteriores)
   ['link-result','p-link-result','d-link-result'].forEach(id=>{
@@ -1636,14 +1634,25 @@ function setupLayout() {
 }
 
 setupLayout();
-// Exibe fence no mapa após layout estar pronto (mobile)
-setTimeout(() => { if (fencePolygon && map) exibirFenceNoMapa(fencePolygon); }, 300);
+// Exibe fence após layout — tenta várias vezes até o mapa aceitar a layer
+(function tentarExibirFence(tentativas) {
+  if (!fencePolygon || !fencePolygon.length) return;
+  if (map && map.getContainer() && map.getContainer().offsetWidth > 0) {
+    exibirFenceNoMapa(fencePolygon);
+  } else if (tentativas > 0) {
+    setTimeout(() => tentarExibirFence(tentativas - 1), 300);
+  }
+})(8); // tenta por até ~2.4s
 
 // Re-executa ao girar a tela
 window.addEventListener('resize', () => {
   setTimeout(() => {
     setupLayout();
     map && map.invalidateSize();
+    // Reexibe fence após rotação (pode ter perdido a layer)
+    if (fencePolygon && fencePolygon.length >= 3 && !fenceLayer) {
+      setTimeout(() => exibirFenceNoMapa(fencePolygon), 100);
+    }
   }, 200);
 });
 

@@ -728,6 +728,19 @@ function calcDuration(start, end) {
   return `${m}m ${ss}s`;
 }
 
+// Busca polígono de geofence do Supabase
+async function carregarFenceDoServidor() {
+  try {
+    const r = await api('config?key=eq.fence_polygon&select=value&limit=1');
+    const rows = await r.json();
+    if (Array.isArray(rows) && rows.length > 0) {
+      window._fencePolygon = JSON.parse(rows[0].value);
+    }
+  } catch(e) {
+    console.warn('Fence não carregado:', e);
+  }
+}
+
 // Ray casting — ponto dentro do polígono
 function pontoNoPolyCheckin(lat, lng, poly) {
   let inside = false;
@@ -982,8 +995,13 @@ async function iniciarAcesso() {
       document.getElementById('ativo-inicio').textContent = `Iniciado às ${fmtHoraMin(sessionStart)}`;
       document.getElementById('stat-pts').textContent = pontos;
       // Mostra raio configurado na timeline
-      const fenceInfo = window._fencePolygon ? `Geofence ativo (${window._fencePolygon.length} pts)` : 'Sem geofence';
-      addTimeline('✓', `Check-in · ${fenceInfo}`, fmtHora());
+      // Fence pode ainda estar carregando — verifica após 1s
+      addTimeline('✓', 'Check-in realizado', fmtHora());
+      setTimeout(() => {
+        if (window._fencePolygon && window._fencePolygon.length >= 3) {
+          addTimeline('🔒', `Geofence ativo · ${window._fencePolygon.length} pontos`, fmtHora());
+        }
+      }, 1500);
 
       await ativarWakeLock();
       iniciarWatchVelocidade();
@@ -1045,9 +1063,9 @@ window.onload = () => {
   token = params.get('token');
   // Phone vem da URL (?phone=NUMERO) — gravado no banco junto com a sessão
   window._phoneFromUrl = params.get('phone') || null;
-  // Polígono de geofence
-  const fenceRaw = params.get('fence');
-  window._fencePolygon = fenceRaw ? JSON.parse(decodeURIComponent(fenceRaw)) : null;
+  // Polígono de geofence — busca do Supabase (não vem mais na URL)
+  window._fencePolygon = null;
+  carregarFenceDoServidor();
   if (!token) {
     token = 'DEMO-' + Math.random().toString(36).substr(2,6).toUpperCase();
     const url = new URL(window.location.href);
