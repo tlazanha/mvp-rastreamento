@@ -901,7 +901,13 @@ async function carregarFenceSalvo() {
     if (local) fencePolygon = JSON.parse(local);
   }
   if (fencePolygon) {
-    exibirFenceNoMapa(fencePolygon);
+    // Aguarda o mapa estar inicializado antes de adicionar a layer
+    if (map) {
+      exibirFenceNoMapa(fencePolygon);
+    } else {
+      // Mapa ainda não pronto — tenta novamente após inicialização
+      setTimeout(() => { if (fencePolygon) exibirFenceNoMapa(fencePolygon); }, 500);
+    }
   }
   atualizarFenceStatus();
 }
@@ -937,8 +943,10 @@ function atualizarFenceStatus() {
 }
 
 function iniciarDesenhoFence() {
-  // Muda para aba painel para ver o mapa (desktop)
-  switchSidebarTab('painel');
+  // Remove polígono anterior do mapa ao redesenhar (evita duplicação)
+  if (fenceLayer) { map.removeLayer(fenceLayer); fenceLayer = null; }
+  fencePolygon = null;
+
   fenceEditing = true;
   fencePoints  = [];
   if (fenceEditLayer) { map.removeLayer(fenceEditLayer); fenceEditLayer = null; }
@@ -947,6 +955,9 @@ function iniciarDesenhoFence() {
   document.getElementById('fence-bar-save').disabled = true;
   map.getContainer().style.cursor = 'crosshair';
   map.on('click', onFenceMapClick);
+  // Centraliza o mapa no polígono salvo (se existia) ou posição atual
+  // sem mudar de aba — portaria continua em Config para ver a barra de edição
+  // O mapa fica atrás da sidebar desktop mas a barra de edição fica visível no mapa
 }
 
 function onFenceMapClick(e) {
@@ -1008,7 +1019,7 @@ async function salvarFence() {
   cancelarFence();
   exibirFenceNoMapa(fencePolygon);
   atualizarFenceStatus();
-  switchSidebarTab('config');
+  // Mantém na aba atual — não força troca de aba
 }
 
 function cancelarFence() {
@@ -1036,16 +1047,14 @@ async function deletarFence() {
 
 function visualizarFence() {
   if (!fencePolygon || fencePolygon.length < 3) return;
-  // Muda para painel e centraliza o mapa no polígono
-  switchSidebarTab('painel');
+  // Garante que o polígono está exibido no mapa
+  if (!fenceLayer) exibirFenceNoMapa(fencePolygon);
+  // Centraliza o mapa no polígono (visível atrás da sidebar no desktop)
   setTimeout(() => {
-    if (fenceLayer) {
-      map.fitBounds(fenceLayer.getBounds().pad(0.2));
-    } else {
-      exibirFenceNoMapa(fencePolygon);
-      setTimeout(() => fenceLayer && map.fitBounds(fenceLayer.getBounds().pad(0.2)), 100);
-    }
-  }, 100);
+    if (fenceLayer) map.fitBounds(fenceLayer.getBounds().pad(0.25));
+  }, 50);
+  // No desktop: abre a aba Painel brevemente só se o usuário quiser ver o mapa completo
+  // Por padrão mantém em Configurações
 }
 
 function limparFence() { deletarFence(); }
@@ -1627,6 +1636,8 @@ function setupLayout() {
 }
 
 setupLayout();
+// Exibe fence no mapa após layout estar pronto (mobile)
+setTimeout(() => { if (fencePolygon && map) exibirFenceNoMapa(fencePolygon); }, 300);
 
 // Re-executa ao girar a tela
 window.addEventListener('resize', () => {
