@@ -131,11 +131,11 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 .map-history-badge-token { color: #fff; font-weight: 700; }
 .map-history-badge-close { background: rgba(255,255,255,0.12); border: none; border-radius: 10px; padding: 2px 8px; color: rgba(255,255,255,0.7); font-size: 11px; cursor: pointer; font-family: var(--sans); font-weight: 600; }
 
-.map-empty { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 900; background: var(--surface); border-radius: 14px; border: 1px solid var(--border-mid); padding: 28px 32px; text-align: center; box-shadow: 0 4px 24px rgba(0,0,0,0.08); display: none; }
-.map-empty.show { display: block; }
-.map-empty-icon  { font-size: 28px; margin-bottom: 10px; }
-.map-empty-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
-.map-empty-sub   { font-size: 12px; color: var(--text-3); }
+.map-empty { position: absolute; bottom: 20px; left: 20px; z-index: 900; background: var(--surface); border-radius: 10px; border: 1px solid var(--border-mid); padding: 10px 14px; display: none; align-items: center; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+.map-empty.show { display: flex; }
+.map-empty-icon  { font-size: 16px; }
+.map-empty-title { font-size: 12px; font-weight: 600; color: var(--text-2); }
+.map-empty-sub   { display: none; }
 
 /* Painel detalhe flutuante */
 .map-detail { position: absolute; bottom: 24px; right: 24px; width: 320px; background: var(--surface); border-radius: 14px; border: 1px solid var(--border-mid); box-shadow: 0 8px 32px rgba(0,0,0,0.12); z-index: 1000; display: none; overflow: hidden; }
@@ -462,6 +462,20 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   .config-hint { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 5px; line-height: 1.5; }
 
   .session-phone { font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 1px; font-family: var(--mono); }
+
+  /* ── Geofence editor ── */
+  .fence-btn { width: 100%; padding: 10px; background: rgba(108,79,204,0.15); border: 1px solid rgba(108,79,204,0.35); border-radius: 8px; color: #a78bfa; font-size: 13px; font-weight: 600; font-family: var(--sans); cursor: pointer; transition: background 0.15s; margin-top: 4px; }
+  .fence-btn:hover { background: rgba(108,79,204,0.25); }
+  .fence-btn.active { background: rgba(201,64,64,0.15); border-color: rgba(201,64,64,0.35); color: #f87171; }
+  .fence-status { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 8px; text-align: center; line-height: 1.5; }
+  .fence-status strong { color: rgba(255,255,255,0.75); }
+  .map-fence-bar { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); z-index: 1001; background: var(--navy); border-radius: 20px; padding: 8px 16px; display: none; align-items: center; gap: 10px; font-size: 12px; font-weight: 600; color: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.25); white-space: nowrap; }
+  .map-fence-bar.show { display: flex; }
+  .fence-bar-pts { background: rgba(108,79,204,0.3); border-radius: 10px; padding: 2px 8px; font-family: var(--mono); }
+  .fence-bar-btn { padding: 5px 12px; border-radius: 8px; border: none; font-size: 11px; font-weight: 700; font-family: var(--sans); cursor: pointer; }
+  .fence-bar-close { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); }
+  .fence-bar-save  { background: var(--green); color: #fff; }
+  .fence-bar-save:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -535,12 +549,12 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
     <div class="link-section-label" style="margin-bottom:14px;">Configurações</div>
     <div class="config-row">
       <span class="config-label">Geofence (raio)</span>
-      <input type="range" class="config-slider" id="p-cfg-raio" min="50" max="500" step="50" value="200" oninput="updateConfig()">
+      <input type="range" class="config-slider" id="p-cfg-raio" min="50" max="500" step="50" value="200" oninput="updateConfig(this)" onchange="updateConfig(this)">
       <span class="config-val" id="p-cfg-raio-val">200m</span>
     </div>
     <div class="config-row">
       <span class="config-label">Alerta velocidade</span>
-      <input type="range" class="config-slider" id="p-cfg-vel" min="10" max="60" step="5" value="20" oninput="updateConfig()">
+      <input type="range" class="config-slider" id="p-cfg-vel" min="10" max="60" step="5" value="20" oninput="updateConfig(this)" onchange="updateConfig(this)">
       <span class="config-val" id="p-cfg-vel-val">20 km/h</span>
     </div>
   </div>
@@ -632,11 +646,18 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
           <div class="config-group-title">Geofence</div>
           <div class="config-item">
             <div class="config-item-label">
-              Raio máximo
+              Raio circular (fallback)
               <span class="config-item-val" id="cfg-raio-val">200m</span>
             </div>
-            <input type="range" class="config-slider-full" id="cfg-raio" min="50" max="500" step="50" value="200" oninput="updateConfig()">
-            <div class="config-hint">Distância máxima do ponto de entrada. Se o prestador ultrapassar esse raio, a sessão é encerrada automaticamente.</div>
+            <input type="range" class="config-slider-full" id="cfg-raio" min="50" max="500" step="50" value="200" oninput="updateConfig(this)" onchange="updateConfig(this)">
+            <div class="config-hint">Usado quando nenhum perímetro personalizado está definido.</div>
+          </div>
+          <div class="config-item">
+            <div class="config-item-label">Perímetro do condomínio</div>
+            <div class="fence-status" id="fence-status">Nenhum perímetro definido</div>
+            <button class="fence-btn" id="fence-draw-btn" onclick="iniciarDesenhoFence()">
+              ✏ Desenhar perímetro no mapa
+            </button>
           </div>
         </div>
 
@@ -647,7 +668,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
               Limite de velocidade
               <span class="config-item-val" id="cfg-vel-val">20 km/h</span>
             </div>
-            <input type="range" class="config-slider-full" id="cfg-vel" min="10" max="60" step="5" value="20" oninput="updateConfig()">
+            <input type="range" class="config-slider-full" id="cfg-vel" min="10" max="60" step="5" value="20" oninput="updateConfig(this)" onchange="updateConfig(this)">
             <div class="config-hint">Acima desse limite o card do prestador pisca em vermelho e um alerta sonoro é emitido.</div>
           </div>
         </div>
@@ -667,6 +688,12 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 
   <main class="main" id="main-map">
     <div class="map-live-badge"><span class="map-live-dot"></span>Ao vivo</div>
+    <div class="map-fence-bar" id="map-fence-bar">
+      <span>Clique no mapa para adicionar pontos</span>
+      <span class="fence-bar-pts" id="fence-bar-pts">0 pts</span>
+      <button class="fence-bar-btn fence-bar-save" id="fence-bar-save" onclick="salvarFence()" disabled>Salvar</button>
+      <button class="fence-bar-btn fence-bar-close" onclick="cancelarFence()">Cancelar</button>
+    </div>
     <div class="map-history-badge" id="map-history-badge">
       <span>Trajeto de</span>
       <span class="map-history-badge-token" id="history-badge-token">—</span>
@@ -676,7 +703,6 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
     <div class="map-empty" id="map-empty">
       <div class="map-empty-icon">📍</div>
       <div class="map-empty-title">Nenhum prestador ativo</div>
-      <div class="map-empty-sub">Os marcadores aparecerão aqui<br>assim que houver check-in</div>
     </div>
     <div class="map-detail" id="map-detail">
       <div class="detail-header">
@@ -752,12 +778,12 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   <div class="drawer-body">
     <div class="config-row" style="margin-top:8px;">
       <span class="config-label">Geofence (raio)</span>
-      <input type="range" class="config-slider" id="d-cfg-raio" min="50" max="500" step="50" value="200" oninput="updateConfig()">
+      <input type="range" class="config-slider" id="d-cfg-raio" min="50" max="500" step="50" value="200" oninput="updateConfig(this)" onchange="updateConfig(this)">
       <span class="config-val" id="d-cfg-raio-val">200m</span>
     </div>
     <div class="config-row">
       <span class="config-label">Alerta velocidade</span>
-      <input type="range" class="config-slider" id="d-cfg-vel" min="10" max="60" step="5" value="20" oninput="updateConfig()">
+      <input type="range" class="config-slider" id="d-cfg-vel" min="10" max="60" step="5" value="20" oninput="updateConfig(this)" onchange="updateConfig(this)">
       <span class="config-val" id="d-cfg-vel-val">20 km/h</span>
     </div>
   </div>
@@ -839,22 +865,146 @@ function loadConfig() {
   });
 }
 
-function updateConfig() {
-  // Lê o slider que acabou de mudar (primeiro com valor válido)
-  const raioEl = document.getElementById('cfg-raio') || document.getElementById('d-cfg-raio') || document.getElementById('p-cfg-raio');
-  const velEl  = document.getElementById('cfg-vel')  || document.getElementById('d-cfg-vel')  || document.getElementById('p-cfg-vel');
-  // Lê o valor do slider ativo
-  for (const id of ['cfg-raio','d-cfg-raio','p-cfg-raio']) {
-    const el = document.getElementById(id);
-    if (el && document.activeElement === el) { cfgRaio = parseInt(el.value); break; }
-  }
-  for (const id of ['cfg-vel','d-cfg-vel','p-cfg-vel']) {
-    const el = document.getElementById(id);
-    if (el && document.activeElement === el) { cfgVel = parseInt(el.value); break; }
-  }
+function updateConfig(el) {
+  // el é o slider que disparou o evento — funciona em desktop e mobile touch
+  if (!el) return;
+  const id  = el.id;
+  const val = parseInt(el.value);
+  if (['cfg-raio','d-cfg-raio','p-cfg-raio'].includes(id)) cfgRaio = val;
+  if (['cfg-vel', 'd-cfg-vel', 'p-cfg-vel' ].includes(id)) cfgVel  = val;
   localStorage.setItem('cfg_raio', cfgRaio);
   localStorage.setItem('cfg_vel',  cfgVel);
   loadConfig(); // sincroniza todos os displays
+}
+
+// ── Geofence por polígono ──
+let fencePoints   = [];   // pontos em edição [ [lat,lng], ... ]
+let fencePolygon  = null; // polígono salvo (array de [lat,lng])
+let fenceLayer    = null; // layer Leaflet do polígono salvo
+let fenceEditLayer = null; // layer durante edição (pontos + linhas)
+let fenceEditing  = false;
+
+// Ray casting — verifica se ponto está dentro do polígono
+function pontoNoPoly(lat, lng, poly) {
+  if (!poly || poly.length < 3) return true; // sem polígono → não restringe
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0], yi = poly[i][1];
+    const xj = poly[j][0], yj = poly[j][1];
+    const intersect = ((yi > lng) !== (yj > lng)) &&
+      (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function carregarFenceSalvo() {
+  const saved = localStorage.getItem('fence_polygon');
+  if (saved) {
+    fencePolygon = JSON.parse(saved);
+    exibirFenceNoMapa(fencePolygon);
+    atualizarFenceStatus();
+  }
+}
+
+function exibirFenceNoMapa(poly) {
+  if (fenceLayer) { map.removeLayer(fenceLayer); fenceLayer = null; }
+  if (!poly || poly.length < 3) return;
+  fenceLayer = L.polygon(poly, {
+    color: 'rgba(108,79,204,0.8)', weight: 2,
+    fillColor: 'rgba(108,79,204,0.08)', fillOpacity: 1,
+    dashArray: '6 4'
+  }).addTo(map);
+}
+
+function atualizarFenceStatus() {
+  const el = document.getElementById('fence-status');
+  const btn = document.getElementById('fence-draw-btn');
+  if (!el) return;
+  if (fencePolygon && fencePolygon.length >= 3) {
+    el.innerHTML = `<strong>${fencePolygon.length} pontos definidos</strong> · Perímetro ativo`;
+    if (btn) { btn.textContent = '✏ Redesenhar perímetro'; }
+  } else {
+    el.textContent = 'Nenhum perímetro definido — usando raio circular';
+    if (btn) { btn.textContent = '✏ Desenhar perímetro no mapa'; }
+  }
+}
+
+function iniciarDesenhoFence() {
+  // Muda para aba painel para ver o mapa (desktop)
+  switchSidebarTab('painel');
+  fenceEditing = true;
+  fencePoints  = [];
+  if (fenceEditLayer) { map.removeLayer(fenceEditLayer); fenceEditLayer = null; }
+  document.getElementById('map-fence-bar').classList.add('show');
+  document.getElementById('fence-bar-pts').textContent = '0 pts';
+  document.getElementById('fence-bar-save').disabled = true;
+  map.getContainer().style.cursor = 'crosshair';
+  map.on('click', onFenceMapClick);
+}
+
+function onFenceMapClick(e) {
+  if (!fenceEditing) return;
+  fencePoints.push([e.latlng.lat, e.latlng.lng]);
+  desenharFenceEdicao();
+  const n = fencePoints.length;
+  document.getElementById('fence-bar-pts').textContent = `${n} pt${n!==1?'s':''}`;
+  document.getElementById('fence-bar-save').disabled = n < 3;
+}
+
+function desenharFenceEdicao() {
+  if (fenceEditLayer) { map.removeLayer(fenceEditLayer); }
+  const layers = [];
+  // Marcadores nos vértices
+  fencePoints.forEach((pt, i) => {
+    const m = L.circleMarker(pt, {
+      radius: i === 0 ? 7 : 5,
+      color: '#6c4fcc', fillColor: i === 0 ? '#6c4fcc' : '#fff',
+      fillOpacity: 1, weight: 2
+    });
+    layers.push(m);
+  });
+  // Linha conectando os pontos
+  if (fencePoints.length > 1) {
+    const linha = L.polyline(fencePoints, { color: '#6c4fcc', weight: 2, dashArray: '6 4' });
+    layers.push(linha);
+  }
+  // Preview do polígono fechado
+  if (fencePoints.length >= 3) {
+    const preview = L.polygon(fencePoints, {
+      color: 'rgba(108,79,204,0.6)', weight: 1.5,
+      fillColor: 'rgba(108,79,204,0.08)', fillOpacity: 1
+    });
+    layers.push(preview);
+  }
+  fenceEditLayer = L.layerGroup(layers).addTo(map);
+}
+
+function salvarFence() {
+  if (fencePoints.length < 3) return;
+  fencePolygon = [...fencePoints];
+  localStorage.setItem('fence_polygon', JSON.stringify(fencePolygon));
+  cancelarFence();
+  exibirFenceNoMapa(fencePolygon);
+  atualizarFenceStatus();
+  // Muda de volta para aba config
+  switchSidebarTab('config');
+}
+
+function cancelarFence() {
+  fenceEditing = false;
+  map.off('click', onFenceMapClick);
+  map.getContainer().style.cursor = '';
+  if (fenceEditLayer) { map.removeLayer(fenceEditLayer); fenceEditLayer = null; }
+  document.getElementById('map-fence-bar').classList.remove('show');
+  fencePoints = [];
+}
+
+function limparFence() {
+  fencePolygon = null;
+  localStorage.removeItem('fence_polygon');
+  if (fenceLayer) { map.removeLayer(fenceLayer); fenceLayer = null; }
+  atualizarFenceStatus();
 }
 
 // ── Alerta sonoro (Web Audio API) ──
@@ -1281,7 +1431,10 @@ function gerarLink() {
   const rand  = Math.random().toString(36).substr(2,5).toUpperCase();
   generatedToken = 'CON' + rand;
   const wppForLink = getInputVal('input-wpp','p-input-wpp','d-input-wpp').replace(/\D/g,'');
-  generatedLink  = `${CHECKIN_URL}?token=${generatedToken}&raio=${cfgRaio}` + (wppForLink ? `&phone=${wppForLink}` : '');
+  const fenceParam = fencePolygon && fencePolygon.length >= 3
+    ? '&fence=' + encodeURIComponent(JSON.stringify(fencePolygon))
+    : '';
+  generatedLink  = `${CHECKIN_URL}?token=${generatedToken}&raio=${cfgRaio}` + (wppForLink ? `&phone=${wppForLink}` : '') + fenceParam;
 
   // Limpa e mostra o novo link (evita concatenação de links anteriores)
   ['link-result','p-link-result','d-link-result'].forEach(id=>{
@@ -1393,6 +1546,7 @@ window.addEventListener('resize', () => {
 // ── Boot ──
 initMap();
 loadConfig();
+carregarFenceSalvo();
 syncDates(todayLocal());
 
 // Detecta modo atual de layout

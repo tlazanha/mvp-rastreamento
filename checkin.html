@@ -731,6 +731,18 @@ function calcDuration(start, end) {
   return `${m}m ${ss}s`;
 }
 
+// Ray casting — ponto dentro do polígono
+function pontoNoPolyCheckin(lat, lng, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0], yi = poly[i][1];
+    const xj = poly[j][0], yj = poly[j][1];
+    if (((yi > lng) !== (yj > lng)) && (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi))
+      inside = !inside;
+  }
+  return inside;
+}
+
 // Distância em metros (Haversine)
 function distMeters(lat1, lng1, lat2, lng2) {
   const R = 6371000, toRad = x => x * Math.PI / 180;
@@ -840,12 +852,19 @@ function iniciarGravacao() {
         const lng = pos.coords.longitude;
 
         // ── Verifica geofence ──
-        if (geofenceAtivo && geofenceLat !== null) {
-          const distOrigem = distMeters(geofenceLat, geofenceLng, lat, lng);
-          if (distOrigem > geofenceRaio) {
-            // Saiu do perímetro — encerra automaticamente
-            addTimeline('⚠', `Saiu do perímetro (${Math.round(distOrigem)}m)`, fmtHora());
-            showError('error-gps', `⚠ Você saiu do perímetro do condomínio (${Math.round(distOrigem)}m do ponto de entrada). Sessão encerrada automaticamente.`);
+        if (geofenceAtivo) {
+          let saiu = false;
+          if (window._fencePolygon && window._fencePolygon.length >= 3) {
+            // Modo polígono: ray casting
+            saiu = !pontoNoPolyCheckin(lat, lng, window._fencePolygon);
+          } else if (geofenceLat !== null) {
+            // Modo raio circular (fallback)
+            const distOrigem = distMeters(geofenceLat, geofenceLng, lat, lng);
+            saiu = distOrigem > geofenceRaio;
+          }
+          if (saiu) {
+            addTimeline('⚠', 'Saiu do perímetro', fmtHora());
+            showError('error-gps', '⚠ Você saiu do perímetro do condomínio. Sessão encerrada automaticamente.');
             await encerrarGeofence();
             return;
           }
@@ -1041,6 +1060,9 @@ window.onload = () => {
   if (raioParam && raioParam >= 50 && raioParam <= 1000) geofenceRaio = raioParam;
   // Phone vem da URL (?phone=NUMERO) — gravado no banco junto com a sessão
   window._phoneFromUrl = params.get('phone') || null;
+  // Polígono de geofence — se presente, substitui o raio circular
+  const fenceRaw = params.get('fence');
+  window._fencePolygon = fenceRaw ? JSON.parse(decodeURIComponent(fenceRaw)) : null;
   if (!token) {
     token = 'DEMO-' + Math.random().toString(36).substr(2,6).toUpperCase();
     const url = new URL(window.location.href);
