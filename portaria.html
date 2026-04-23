@@ -552,6 +552,20 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
       <input type="range" class="config-slider" id="p-cfg-vel" min="10" max="60" step="5" value="20" oninput="updateConfig(this)" onchange="updateConfig(this)">
       <span class="config-val" id="p-cfg-vel-val">20 km/h</span>
     </div>
+    
+    <div class="link-section-label" style="margin-top:16px;margin-bottom:10px;">Geofence</div>
+    <div class="fence-status" id="p-fence-status">Carregando…</div>
+    <button class="fence-btn" id="p-fence-draw-btn" onclick="iniciarDesenhoMobile()" style="margin-top:10px;">
+      ✏ Desenhar perímetro
+    </button>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="fence-btn" id="p-fence-view-btn" onclick="visualizarFenceMobile()" style="display:none;flex:1;background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);">
+        👁 Visualizar
+      </button>
+      <button class="fence-btn" id="p-fence-del-btn" onclick="deletarFence()" style="display:none;flex:1;background:rgba(201,64,64,0.1);border-color:rgba(201,64,64,0.3);color:#f87171;">
+        🗑 Deletar
+      </button>
+    </div>
   </div>
 </div>
 
@@ -775,11 +789,24 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   <div class="drawer-handle"></div>
   <div class="drawer-title">Configurações</div>
   <div class="drawer-body">
-
-    <div class="config-row">
+    <div class="config-row" style="margin-top:8px;">
       <span class="config-label">Alerta velocidade</span>
       <input type="range" class="config-slider" id="d-cfg-vel" min="10" max="60" step="5" value="20" oninput="updateConfig(this)" onchange="updateConfig(this)">
       <span class="config-val" id="d-cfg-vel-val">20 km/h</span>
+    </div>
+    
+    <div class="link-section-label" style="margin-bottom:10px;">Geofence</div>
+    <div class="fence-status" id="d-fence-status">Carregando…</div>
+    <button class="fence-btn" id="d-fence-draw-btn" onclick="iniciarDesenhoMobile()" style="margin-top:10px;">
+      ✏ Desenhar perímetro
+    </button>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="fence-btn" id="d-fence-view-btn" onclick="visualizarFenceMobile()" style="display:none;flex:1;background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);">
+        👁 Visualizar
+      </button>
+      <button class="fence-btn" id="d-fence-del-btn" onclick="deletarFence()" style="display:none;flex:1;background:rgba(201,64,64,0.1);border-color:rgba(201,64,64,0.3);color:#f87171;">
+        🗑 Deletar
+      </button>
     </div>
   </div>
 </div>
@@ -923,23 +950,27 @@ function exibirFenceNoMapa(poly) {
 }
 
 function atualizarFenceStatus() {
-  const el      = document.getElementById('fence-status');
-  const drawBtn = document.getElementById('fence-draw-btn');
-  const viewBtn = document.getElementById('fence-view-btn');
-  const delBtn  = document.getElementById('fence-del-btn');
-  if (!el) return;
   const temFence = fencePolygon && fencePolygon.length >= 3;
-  if (temFence) {
-    el.innerHTML = `<strong style="color:#a78bfa">${fencePolygon.length} pontos definidos</strong> · <span style="color:rgba(255,255,255,0.6)">Geofence ativo</span>`;
-    if (drawBtn) drawBtn.textContent = '✏ Redesenhar perímetro';
-    if (viewBtn) viewBtn.style.display = 'block';
-    if (delBtn)  delBtn.style.display  = 'block';
-  } else {
-    el.innerHTML = 'Nenhum perímetro definido<br><span style="opacity:0.6">Geofence automático desativado</span>';
-    if (drawBtn) drawBtn.textContent = '✏ Desenhar perímetro no mapa';
-    if (viewBtn) viewBtn.style.display = 'none';
-    if (delBtn)  delBtn.style.display  = 'none';
-  }
+  const htmlAtivo   = temFence
+    ? `<strong style="color:#a78bfa">${fencePolygon.length} pontos</strong> · <span style="color:rgba(255,255,255,0.6)">Geofence ativo</span>`
+    : 'Nenhum perímetro<br><span style="opacity:0.6">Geofence desativado</span>';
+  const labelDraw = temFence ? '✏ Redesenhar' : '✏ Desenhar perímetro';
+
+  // Atualiza todos os contextos (desktop, portrait, landscape)
+  [
+    ['fence-status',   'fence-draw-btn',   'fence-view-btn',   'fence-del-btn'],
+    ['p-fence-status', 'p-fence-draw-btn', 'p-fence-view-btn', 'p-fence-del-btn'],
+    ['d-fence-status', 'd-fence-draw-btn', 'd-fence-view-btn', 'd-fence-del-btn'],
+  ].forEach(([statusId, drawId, viewId, delId]) => {
+    const st  = document.getElementById(statusId);
+    const drw = document.getElementById(drawId);
+    const viw = document.getElementById(viewId);
+    const del = document.getElementById(delId);
+    if (st)  st.innerHTML = htmlAtivo;
+    if (drw) drw.textContent = labelDraw;
+    if (viw) viw.style.display = temFence ? 'block' : 'none';
+    if (del) del.style.display = temFence ? 'block' : 'none';
+  });
 }
 
 function iniciarDesenhoFence() {
@@ -1058,6 +1089,24 @@ function visualizarFence() {
 }
 
 function limparFence() { deletarFence(); }
+
+// Funções mobile: fecha drawer/tab e inicia edição no mapa
+function iniciarDesenhoMobile() {
+  closeDrawer();          // fecha drawer landscape
+  // No portrait: muda para aba mapa
+  if (typeof currentTab !== 'undefined' && currentTab !== 'mapa') {
+    switchTab('mapa');
+  }
+  setTimeout(() => iniciarDesenhoFence(), 200);
+}
+
+function visualizarFenceMobile() {
+  closeDrawer();
+  if (typeof currentTab !== 'undefined' && currentTab !== 'mapa') {
+    switchTab('mapa');
+  }
+  setTimeout(() => visualizarFence(), 200);
+}
 
 // ── Alerta sonoro (Web Audio API) ──
 let audioCtx = null;
