@@ -1133,14 +1133,16 @@ const H = { 'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorizati
 const api = (path,opts={}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`,{headers:{...H,...(opts.extraHeaders||{})},...opts});
 
 // ── Helpers tempo ──
-// Garante que string ISO é interpretada como UTC (adiciona Z se ausente)
+// Converte qualquer string de data para objeto Date em UTC de forma robusta
 function toUTC(iso) {
   if (!iso) return null;
-  const s = String(iso);
-  // Se já tem timezone explícito (+00, Z, etc) não altera
-  if (s.endsWith('Z') || s.includes('+') || /[-+]\d{2}:\d{2}$/.test(s)) return s;
-  // Supabase às vezes retorna sem Z — força UTC
-  return s + 'Z';
+  const s = String(iso).trim();
+  // Já tem indicador de timezone — usa direto
+  if (s.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(s) || /[+-]\d{4}$/.test(s)) return s;
+  // Supabase retorna às vezes com espaço em vez de T — normaliza
+  const normalized = s.replace(' ', 'T');
+  // Sem timezone — assume UTC (adiciona Z)
+  return normalized + 'Z';
 }
 function fmtTime(iso) { if(!iso)return'--'; return new Date(toUTC(iso)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:TZ}); }
 function fmtTimeFull(iso) { if(!iso)return'--'; return new Date(toUTC(iso)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:TZ}); }
