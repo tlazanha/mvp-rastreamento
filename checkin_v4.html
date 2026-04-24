@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1a2744">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Acesso ao Condomínio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:       #17151f;
+    --navy-deep:  #110f1a;
+    --green:      #6c4fcc;
+    --green-bg:   #ede8fa;
+    --green-text: #4a32a8;
+    --green-done: #1e1730;
+    --red:        #c94040;
+    --amber:      oklch(68% 0.14 72);
+    --bg:         #f4f3f7;
+    --surface:    #ffffff;
+    --border:     rgba(0,0,0,0.07);
+    --text:       #110f1a;
+    --text-2:     #635d7a;
+    --text-3:     #9d96b8;
+    --mono:       'JetBrains Mono', monospace;
+    --sans:       'Plus Jakarta Sans', sans-serif;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    font-family: var(--sans);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ── Screens ── */
+  .screen {
+    display: none;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  .screen.active { display: flex; }
+
+  /* ── Header ── */
+  .header {
+    background: var(--navy);
+    color: #fff;
+    padding: 56px 24px 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.03);
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -40px; left: -30px;
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .header-eyebrow {
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+  }
+  .eyebrow-line {
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,0.1);
+    max-width: 40px;
+  }
+
+  .header-title {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+    position: relative;
+    z-index: 1;
+  }
+  .header-sub {
+    font-size: 13.5px;
+    color: rgba(255,255,255,0.5);
+    margin-top: 6px;
+    font-weight: 400;
+    position: relative;
+    z-index: 1;
+  }
+  .header-token-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 14px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    font-family: var(--mono);
+    font-weight: 500;
+    position: relative;
+    z-index: 1;
+  }
+  .token-key {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.3);
+    margin-right: 2px;
+  }
+
+  /* ── Body ── */
+  .body {
+    flex: 1;
+    padding: 24px 20px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+
+  .card-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  /* ── Termo ── */
+  .termo-text {
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: var(--text-2);
+    text-wrap: pretty;
+  }
+
+  /* ── Checkbox ── */
+  .checkbox-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+    cursor: pointer;
+    padding: 2px 0;
+  }
+  .custom-checkbox {
+    width: 22px; height: 22px;
+    border-radius: 7px;
+    border: 2px solid #d1d5db;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0px;
+    transition: background 0.15s, border-color 0.15s;
+    background: #fff;
+    cursor: pointer;
+  }
+  .checkbox-native {
+    display: none;
+  }
+  .checkbox-native:checked + .custom-checkbox {
+    background: var(--navy);
+    border-color: var(--navy);
+  }
+  .checkbox-native:checked + .custom-checkbox::after {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 10px;
+    border: 2px solid #fff;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg) translate(-1px, -1px);
+  }
+  .checkbox-label {
+    font-size: 13.5px;
+    color: var(--text-2);
+    line-height: 1.6;
+    text-wrap: pretty;
+    cursor: pointer;
+  }
+
+  /* ── Status badge ── */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 13px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .status-badge.waiting { background: #f1f0ed; color: #9ca3af; }
+  .status-badge.active  { background: var(--green-bg); color: var(--green-text); }
+  .status-badge.ended   { background: oklch(96% 0.04 72); color: oklch(42% 0.14 72); }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .dot-waiting  { background: #d1d5db; }
+  .dot-active   { background: var(--green); animation: ring 2s infinite; }
+  .dot-ended    { background: var(--amber); }
+  @keyframes ring {
+    0%   { box-shadow: 0 0 0 0 rgba(108, 79, 204, 0.5); }
+    60%  { box-shadow: 0 0 0 5px rgba(108, 79, 204, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(108, 79, 204, 0); }
+  }
+
+  /* ── Stats grid ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .stat-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 16px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .stat-label {
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.5px;
+    font-family: var(--mono);
+    line-height: 1;
+  }
+  .stat-unit {
+    font-size: 11px;
+    color: var(--text-3);
+    font-weight: 400;
+    font-family: var(--sans);
+    letter-spacing: 0;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    width: 100%;
+    padding: 17px;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s, filter 0.15s;
+    letter-spacing: -0.1px;
+  }
+  .btn:active { transform: scale(0.975); opacity: 0.85; }
+
+  .btn-primary {
+    background: var(--navy);
+    color: #fff;
+  }
+  .btn-primary:hover { filter: brightness(1.12); }
+
+  .btn-disabled {
+    background: #e9e8e4;
+    color: #b0aea8;
+    pointer-events: none;
+  }
+
+  .btn-danger {
+    background: var(--red);
+    color: #fff;
+  }
+  .btn-danger:hover { filter: brightness(1.08); }
+
+  /* ── Error ── */
+  .error-msg {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 12px 15px;
+    font-size: 13px;
+    color: #b91c1c;
+    display: none;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  /* ── Timeline ── */
+  .timeline-item {
+    display: flex;
+    gap: 13px;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px solid #fafaf8;
+  }
+  .timeline-item:last-child { border-bottom: none; }
+
+  .timeline-icon {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 13px;
+    border: 1px solid var(--border);
+  }
+
+  .timeline-text { flex: 1; }
+  .timeline-title { font-size: 13.5px; font-weight: 600; color: var(--text); }
+  .timeline-time  { font-size: 11.5px; color: var(--text-3); margin-top: 2px; font-family: var(--mono); }
+
+  /* ── Encerrado header ── */
+  .header-done {
+    background: var(--green-done);
+  }
+
+  /* ── Done icon ── */
+  .done-icon-wrap {
+    width: 68px; height: 68px;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.08);
+    border: 1.5px solid rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 18px;
+  }
+  .done-icon-wrap svg {
+    width: 34px; height: 34px;
+  }
+
+  /* ── Summary grid ── */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 4px;
+  }
+  .summary-item {}
+  .summary-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); font-weight: 700; margin-bottom: 4px; }
+  .summary-value { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.2px; }
+
+  /* ── Botão Fale com a Portaria ── */
+  .btn-portaria {
+    width: 100%;
+    padding: 14px;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.1s;
+    letter-spacing: -0.1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-decoration: none;
+    border: none;
+  }
+  .btn-portaria:active { transform: scale(0.975); }
+  .btn-whatsapp { background: #25d366; color: #fff; }
+  .btn-whatsapp:hover { filter: brightness(1.08); }
+  .btn-ligacao  { background: transparent; color: var(--text-2); border: 1.5px solid var(--border-mid); }
+  .btn-ligacao:hover  { background: var(--bg); }
+  .btn-portaria svg { width: 20px; height: 20px; flex-shrink: 0; }
+  .portaria-divider {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11px; color: var(--text-3); margin: 2px 0;
+  }
+  .portaria-divider::before,
+  .portaria-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  /* ── LGPD note ── */
+  .lgpd-note {
+    font-size: 11.5px;
+    color: var(--text-3);
+    text-align: center;
+    line-height: 1.5;
+    padding: 0 8px;
+  }
+
+  /* ── Loader ── */
+  .loader {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .spacer { flex: 1; }
+
+  /* ── Aviso de tela ativa ── */
+  .tela-aviso {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: oklch(96% 0.04 72);
+    border: 1px solid oklch(88% 0.08 72);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .tela-aviso-icon {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: oklch(68% 0.14 72);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .tela-aviso-icon svg { width: 14px; height: 14px; }
+  .tela-aviso-text { font-size: 12.5px; color: oklch(42% 0.14 72); line-height: 1.55; font-weight: 500; }
+  .tela-aviso-text strong { font-weight: 700; }
+
+  /* ── Badge de status do Wake Lock ── */
+  .wakelock-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; padding: 3px 8px; border-radius: 10px;
+    margin-top: 6px;
+  }
+  .wakelock-badge.ok  { background: var(--green-bg); color: var(--green-text); }
+  .wakelock-badge.off { background: #f1f0ed; color: #9ca3af; }
+  .wakelock-badge-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .wakelock-badge.ok  .wakelock-badge-dot { background: var(--green); animation: ring 2s infinite; }
+  .wakelock-badge.off .wakelock-badge-dot { background: #d1d5db; }
+  /* ── Aviso de tela ativa ── */
+  .tela-aviso {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: oklch(96% 0.04 72); border: 1px solid oklch(88% 0.08 72);
+    border-radius: 12px; padding: 12px 14px;
+  }
+  .tela-aviso-icon { width: 28px; height: 28px; border-radius: 8px; background: oklch(68% 0.14 72); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .tela-aviso-icon svg { width: 14px; height: 14px; }
+  .tela-aviso-text { font-size: 12.5px; color: oklch(42% 0.14 72); line-height: 1.55; font-weight: 500; }
+  .tela-aviso-text strong { font-weight: 700; }
+  .wakelock-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 8px; border-radius: 10px; margin-top: 6px; }
+  .wakelock-badge.ok  { background: var(--green-bg); color: var(--green-text); }
+  .wakelock-badge.off { background: #f1f0ed; color: #9ca3af; }
+  .wakelock-badge-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .wakelock-badge.ok  .wakelock-badge-dot { background: var(--green); animation: ring 2s infinite; }
+  .wakelock-badge.off .wakelock-badge-dot { background: #d1d5db; }
+
+</style>
+</head>
+<body>
+
+<!-- ── TELA 1: Check-in ── -->
+<div id="screen-checkin" class="screen active">
+  <div class="header">
+    <div class="header-eyebrow">
+      <span class="eyebrow-line"></span>
+      Acesso ao condomínio
+    </div>
+    <div class="header-title">Autorização de entrada</div>
+    <div class="header-sub">Rastreamento para fins de segurança</div>
+    <div class="header-token-badge">
+      <span class="token-key">Token</span>
+      <span id="checkin-token-label">Carregando…</span>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="card">
+      <div class="card-label">Por que precisamos da sua localização?</div>
+      <p class="termo-text">
+        Para garantir a segurança do condomínio, registramos seu trajeto enquanto você estiver nas dependências. Os dados são usados exclusivamente para fins de segurança e descartados após sua saída.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Termo de consentimento</div>
+      <label class="checkbox-row">
+        <input type="checkbox" class="checkbox-native" id="termo-check" onchange="toggleBtn(this.checked)">
+        <span class="custom-checkbox"></span>
+        <span class="checkbox-label">Autorizo o uso da minha localização durante minha permanência no condomínio para fins de segurança.</span>
+      </label>
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <button class="btn btn-disabled" id="btn-iniciar" onclick="iniciarAcesso()">
+      Iniciar acesso
+    </button>
+
+    <p class="lgpd-note">Seus dados são tratados conforme a LGPD</p>
+  </div>
+</div>
+
+<!-- ── TELA 2: Rastreamento ativo ── -->
+<div id="screen-ativo" class="screen">
+  <div class="header">
+    <div class="header-eyebrow">
+      <span class="eyebrow-line"></span>
+      Acesso autorizado
+    </div>
+    <div class="header-title">Você está dentro</div>
+    <div class="header-sub" id="ativo-inicio">Iniciado às --:--</div>
+  </div>
+
+  <div class="body">
+    <div class="card" style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px;">
+      <span style="font-size:13.5px; color:var(--text-2); font-weight:600;">Status da sessão</span>
+      <span class="status-badge active" id="status-badge">
+        <span class="status-dot dot-active"></span>
+        Ativo
+      </span>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-label">Tempo dentro</div>
+        <div class="stat-value" id="stat-tempo">00:00</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Velocidade</div>
+        <div class="stat-value">
+          <span id="stat-vel">0</span><span class="stat-unit"> km/h</span>
+        </div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Pontos GPS</div>
+        <div class="stat-value" id="stat-pts">0</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Última atualiz.</div>
+        <div class="stat-value" id="stat-upd" style="font-size:14px;">--:--</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Atividade recente</div>
+      <div id="timeline"></div>
+    </div>
+
+    <div class="error-msg" id="error-gps"></div>
+
+    <!-- Aviso de tela ativa -->
+    <div class="tela-aviso">
+      <div class="tela-aviso-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="5" y="2" width="14" height="20" rx="2"/>
+          <circle cx="12" cy="18" r="1" fill="#fff" stroke="none"/>
+        </svg>
+      </div>
+      <div class="tela-aviso-text">
+        <strong>Mantenha esta tela aberta</strong> e a tela do celular ligada durante toda a visita.<br><span style="font-size:11.5px;opacity:0.8;">Android: permita localização <em>o tempo todo</em> para rastrear em background. iPhone: não minimize o Safari.</span>
+        <br>
+        <span class="wakelock-badge off" id="wakelock-badge">
+          <span class="wakelock-badge-dot"></span>
+          <span id="wakelock-label">Mantenha a tela ligada</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <!-- Fale com a Portaria -->
+    <a class="btn-portaria btn-whatsapp" href="https://wa.me/5512997551507" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.133 1.535 5.879L.057 23.487a.5.5 0 00.609.61l5.76-1.51A11.955 11.955 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.7-.51-5.26-1.44l-.38-.22-3.92 1.03 1.04-3.81-.24-.38A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+      Fale com a Portaria
+    </a>
+
+    <div class="portaria-divider">ou</div>
+
+    <a class="btn-portaria btn-ligacao" href="tel:+5512997551507">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.7A2 2 0 012.18 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.15 6.15l1.27-.52a2 2 0 012.11.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      Ligar para a Portaria
+    </a>
+
+    <button class="btn btn-danger" onclick="confirmarEncerramento()" style="margin-top:8px;">
+      Encerrar visita
+    </button>
+    <p class="lgpd-note" style="margin-bottom:8px;">Seu rastreamento será encerrado ao sair</p>
+  </div>
+</div>
+
+<!-- ── TELA 3: Encerrado ── -->
+<div id="screen-encerrado" class="screen">
+  <div class="header header-done">
+    <div class="done-icon-wrap">
+      <svg viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="17" cy="17" r="15" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+        <polyline points="11,18 15,22 23,14" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="header-eyebrow">
+      <span class="eyebrow-line"></span>
+      Visita encerrada
+    </div>
+    <div class="header-title" id="header-title-end">Obrigado pela visita</div>
+    <div class="header-sub" id="header-sub-end">Seu acesso foi registrado com sucesso</div>
+  </div>
+
+  <div class="body">
+    <div class="card">
+      <div class="card-label">Resumo da visita</div>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="summary-label">Início</div>
+          <div class="summary-value" id="res-inicio">--</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Término</div>
+          <div class="summary-value" id="res-fim">--</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Duração</div>
+          <div class="summary-value" id="res-duracao">--</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Pontos GPS</div>
+          <div class="summary-value" id="res-pts">--</div>
+        </div>
+      </div>
+    </div>
+
+    <p class="lgpd-note" style="margin-top:8px;">Você pode fechar esta página com segurança</p>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://xijwxqyvxoyhjekhkrfm.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_o-FGHOuSygRdquiMZZ922g_WSDk_B3Z';
+const TZ = 'America/Sao_Paulo';
+
+const headers = { 'Content-Type':'application/json', 'apikey':SUPABASE_KEY, 'Authorization':`Bearer ${SUPABASE_KEY}` };
+const api = (path, opts={}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers:{ ...headers, ...(opts.extraHeaders||{}) }, ...opts });
+
+// ── Estado ──
+let token = null, sessionId = null;
+let watchId = null, timerInterval = null, trackInterval = null;
+let sessionStart = null;
+let pontos = 0, timelineItems = [];
+let lastSentLat = null, lastSentLng = null;
+let currentSpeed = 0; // velocidade atual suavizada em km/h
+
+// ── Geofence (só polígono — sem raio circular) ──
+let geofenceAtivo = false;
+
+// Janela deslizante de posições para cálculo de velocidade suavizada
+// Guarda os últimos N pontos com { lat, lng, ts }
+const SPEED_WINDOW = 4;   // nº de pontos na janela
+const MIN_DIST_M   = 2;   // descarta pontos praticamente idênticos (ruído estático)
+let posWindow = [];
+
+// ── Wake Lock ──
+let wakeLock = null;
+async function ativarWakeLock() {
+  if (!('wakeLock' in navigator)) { updateWakeLockBadge(false); return; }
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; updateWakeLockBadge(false); });
+    updateWakeLockBadge(true);
+  } catch(e) { updateWakeLockBadge(false); }
+}
+function desativarWakeLock() {
+  if (wakeLock) { try { wakeLock.release(); } catch(e){} wakeLock = null; }
+  updateWakeLockBadge(false);
+}
+function updateWakeLockBadge(active) {
+  const badge = document.getElementById('wakelock-badge');
+  const label = document.getElementById('wakelock-label');
+  if (!badge || !label) return;
+  badge.className = 'wakelock-badge ' + (active ? 'ok' : 'off');
+  label.textContent = active ? 'Tela protegida' : 'Mantenha a tela ligada';
+}
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && sessionId) {
+    await ativarWakeLock();
+    addTimeline('↩', 'Voltou para a tela', fmtHora());
+  }
+});
+
+// ── Helpers ──
+function fmtHora() { return new Date().toLocaleTimeString('pt-BR', { timeZone: TZ }); }
+function fmtHoraMin(d) { return d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', timeZone: TZ }); }
+function calcDuration(start, end) {
+  const s = Math.floor((end - start) / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m ${ss}s`;
+}
+
+// Busca polígono de geofence do Supabase
+async function carregarFenceDoServidor() {
+  try {
+    const r = await api('config?key=eq.fence_polygon&select=value&limit=1');
+    const rows = await r.json();
+    if (Array.isArray(rows) && rows.length > 0) {
+      window._fencePolygon = JSON.parse(rows[0].value);
+    }
+  } catch(e) {
+    console.warn('Fence não carregado:', e);
+  }
+}
+
+// Ray casting — ponto dentro do polígono
+function pontoNoPolyCheckin(lat, lng, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0], yi = poly[i][1];
+    const xj = poly[j][0], yj = poly[j][1];
+    if (((yi > lng) !== (yj > lng)) && (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi))
+      inside = !inside;
+  }
+  return inside;
+}
+
+// Distância em metros (Haversine)
+function distMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000, toRad = x => x * Math.PI / 180;
+  const dLat = toRad(lat2-lat1), dLng = toRad(lng2-lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ── UI ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function toggleBtn(checked) {
+  document.getElementById('btn-iniciar').className = checked ? 'btn btn-primary' : 'btn btn-disabled';
+}
+function showError(id, msg) { const el=document.getElementById(id); el.textContent=msg; el.style.display='block'; }
+function hideError(id) { document.getElementById(id).style.display='none'; }
+function addTimeline(icon, title, time) {
+  timelineItems.unshift({ icon, title, time });
+  if (timelineItems.length > 5) timelineItems.pop();
+  document.getElementById('timeline').innerHTML = timelineItems.map(i =>
+    `<div class="timeline-item">
+      <div class="timeline-icon">${i.icon}</div>
+      <div class="timeline-text">
+        <div class="timeline-title">${i.title}</div>
+        <div class="timeline-time">${i.time}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Cálculo de velocidade por janela deslizante ──
+// Usa os últimos SPEED_WINDOW pontos GPS para calcular distância total / tempo total.
+// Isso suaviza o ruído sem introduzir delay artificial — a janela desliza
+// continuamente, então a velocidade atualiza a cada novo ponto recebido.
+function calcSpeedWindow() {
+  if (posWindow.length < 2) return 0;
+
+  const first = posWindow[0];
+  const last  = posWindow[posWindow.length - 1];
+  const dt    = (last.ts - first.ts) / 1000; // segundos
+  if (dt < 1) return 0;
+
+  // Distância total percorrida na janela (soma dos segmentos)
+  let totalDist = 0;
+  for (let i = 1; i < posWindow.length; i++) {
+    totalDist += distMeters(
+      posWindow[i-1].lat, posWindow[i-1].lng,
+      posWindow[i].lat,   posWindow[i].lng
+    );
+  }
+
+  return (totalDist / dt) * 3.6; // km/h
+}
+
+// ── watchPosition: alimenta janela e atualiza velocidade na UI ──
+function iniciarWatchVelocidade() {
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const now = Date.now();
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      // 1ª opção: speed nativa do SO — iOS Safari fornece isso bem filtrado
+      if (pos.coords.speed != null && pos.coords.speed >= 0) {
+        currentSpeed = Math.round(pos.coords.speed * 3.6);
+        // Alimenta a janela mesmo assim (para gravação e fallback)
+        posWindow.push({ lat, lng, ts: now });
+        if (posWindow.length > SPEED_WINDOW) posWindow.shift();
+        document.getElementById('stat-vel').textContent = currentSpeed;
+        return;
+      }
+
+      // 2ª opção: janela deslizante (Android Chrome — speed nativa indisponível)
+      // Só adiciona ponto se se moveu pelo menos MIN_DIST_M do último
+      if (posWindow.length > 0) {
+        const prev = posWindow[posWindow.length - 1];
+        const d = distMeters(prev.lat, prev.lng, lat, lng);
+        if (d < MIN_DIST_M) {
+          // Parado: limpa janela para não acumular ruído de GPS estático
+          posWindow = [];
+          currentSpeed = 0;
+          document.getElementById('stat-vel').textContent = 0;
+          return;
+        }
+      }
+
+      posWindow.push({ lat, lng, ts: now });
+      if (posWindow.length > SPEED_WINDOW) posWindow.shift();
+
+      const speed = calcSpeedWindow();
+      // Limite superior razoável para condomínio (carro rápido = 60 km/h)
+      currentSpeed = Math.round(Math.min(speed, 60));
+      document.getElementById('stat-vel').textContent = currentSpeed;
+    },
+    () => {},
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+}
+
+// ── GPS contínuo: verifica geofence a cada 5s, grava no banco a cada 10s ──
+let _lastGravaTs = 0;
+
+function iniciarGravacao() {
+  trackInterval = setInterval(() => {
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const now = Date.now();
+
+        // ── Verifica geofence a cada chamada (5s) ──
+        if (geofenceAtivo && window._fencePolygon && window._fencePolygon.length >= 3) {
+          if (!pontoNoPolyCheckin(lat, lng, window._fencePolygon)) {
+            addTimeline('⚠', 'Saiu do perímetro', fmtHora());
+            showError('error-gps', '⚠ Você saiu do perímetro do condomínio. Sessão encerrada automaticamente.');
+            await encerrarGeofence();
+            return;
+          }
+        }
+
+        // ── Grava no banco só a cada 10s e se moveu ≥ 5m ──
+        if (now - _lastGravaTs < 10000) return;
+        if (lastSentLat !== null) {
+          const dist = distMeters(lastSentLat, lastSentLng, lat, lng);
+          if (dist < 5) return;
+        }
+
+        const speed = currentSpeed;
+        try {
+          await api('locations', {
+            method: 'POST',
+            body: JSON.stringify({
+              session_id: sessionId,
+              latitude: lat, longitude: lng,
+              speed: speed,
+              timestamp: new Date().toISOString()
+            })
+          });
+          _lastGravaTs = now;
+          lastSentLat = lat; lastSentLng = lng;
+          pontos++;
+          document.getElementById('stat-pts').textContent = pontos;
+          document.getElementById('stat-upd').textContent = fmtHora();
+          hideError('error-gps');
+          if (speed > 30) {
+            addTimeline('↑', `Velocidade: ${speed} km/h`, fmtHora());
+          } else {
+            addTimeline('◎', `Ponto registrado · ${speed} km/h`, fmtHora());
+          }
+        } catch(e) {
+          showError('error-gps', 'Falha ao enviar. Tentando novamente…');
+        }
+      },
+      () => { showError('error-gps', 'GPS indisponível…'); },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 }
+    );
+  }, 5000); // verifica geofence a cada 5s (grava a cada 10s)
+}
+
+// ── Timer de duração ──
+function iniciarTimer() {
+  timerInterval = setInterval(() => {
+    if (!sessionStart) return;
+    const diff = Math.floor((Date.now() - sessionStart) / 1000);
+    const m = Math.floor(diff / 60).toString().padStart(2,'0');
+    const s = (diff % 60).toString().padStart(2,'0');
+    document.getElementById('stat-tempo').textContent = `${m}:${s}`;
+  }, 1000);
+}
+
+// ── Check-in ──
+async function iniciarAcesso() {
+  const btn = document.getElementById('btn-iniciar');
+  btn.innerHTML = 'Verificando… <span class="loader"></span>';
+  btn.className = 'btn btn-disabled';
+  hideError('error-msg');
+
+  // ── Verificação de uso único do token ──
+  try {
+    const check = await api(`sessions?token=eq.${token}&status=in.(active,finished)&select=id,status&limit=1`);
+    const existing = await check.json();
+    if (Array.isArray(existing) && existing.length > 0) {
+      const status = existing[0].status;
+      const msg = status === 'active'
+        ? 'Este link já está sendo usado por outra pessoa. Solicite um novo link à portaria.'
+        : 'Este link de acesso já foi utilizado. Solicite um novo link à portaria.';
+      showError('error-msg', msg);
+      // Bloqueia o botão permanentemente — link inválido
+      btn.innerHTML = 'Link já utilizado';
+      btn.className = 'btn btn-disabled';
+      // Desmarca o checkbox para deixar claro que não pode prosseguir
+      document.getElementById('termo-check').checked = false;
+      return;
+    }
+  } catch(e) {
+    // Falha na verificação — permite continuar (não bloqueia por erro de rede)
+    console.warn('Verificação de token falhou:', e);
+  }
+
+  if (!navigator.geolocation) {
+    showError('error-msg', 'Seu navegador não suporta geolocalização.');
+    btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary'; return;
+  }
+
+  btn.innerHTML = 'Aguardando GPS… <span class="loader"></span>';
+
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    try {
+      const resp = await api('sessions', {
+        method: 'POST',
+        extraHeaders: { 'Prefer': 'return=representation' },
+        body: JSON.stringify({
+          token, status: 'active',
+          latitude_start:  pos.coords.latitude,
+          longitude_start: pos.coords.longitude,
+          ...(window._phoneFromUrl ? { phone: window._phoneFromUrl } : {}),
+          ...(window._fencePolygon ? { fence_polygon: JSON.stringify(window._fencePolygon) } : {})
+        })
+      });
+      if (!resp.ok) { const e = await resp.json(); throw new Error(e.message||'Erro ao criar sessão'); }
+      const data = await resp.json();
+      sessionId    = data[0].id;
+      sessionStart = new Date();
+
+      // Grava ponto inicial
+      const initSpeed = pos.coords.speed != null ? Math.round(pos.coords.speed * 3.6) : 0;
+      await api('locations', {
+        method: 'POST',
+        body: JSON.stringify({
+          session_id: sessionId,
+          latitude: pos.coords.latitude, longitude: pos.coords.longitude,
+          speed: initSpeed, timestamp: new Date().toISOString()
+        })
+      });
+      lastSentLat = pos.coords.latitude;
+      lastSentLng = pos.coords.longitude;
+      pontos = 1;
+
+      // Ativa geofence (polígono carregado da URL)
+      geofenceAtivo = true;
+
+      showScreen('screen-ativo');
+      document.getElementById('ativo-inicio').textContent = `Iniciado às ${fmtHoraMin(sessionStart)}`;
+      document.getElementById('stat-pts').textContent = pontos;
+      // Mostra raio configurado na timeline
+      // Fence pode ainda estar carregando — verifica após 1s
+      addTimeline('✓', 'Check-in realizado', fmtHora());
+      setTimeout(() => {
+        if (window._fencePolygon && window._fencePolygon.length >= 3) {
+          addTimeline('🔒', `Geofence ativo · ${window._fencePolygon.length} pontos`, fmtHora());
+        }
+      }, 1500);
+
+      await ativarWakeLock();
+      iniciarWatchVelocidade();
+      iniciarGravacao();
+      iniciarTimer();
+
+    } catch(e) {
+      showError('error-msg', `Erro: ${e.message}`);
+      btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary';
+    }
+  }, (err) => {
+    let msg = 'Não foi possível obter sua localização. ';
+    if (err.code === 1) msg += 'Permissão negada.';
+    else if (err.code === 2) msg += 'GPS indisponível.';
+    else msg += 'Verifique se o GPS está ativado.';
+    showError('error-msg', msg);
+    btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary';
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+}
+
+// ── Encerramento ──
+async function confirmarEncerramento() {
+  if (!confirm('Confirma o encerramento da visita?')) return;
+  await encerrar();
+}
+
+// Encerramento automático por geofence — sem confirmação
+async function encerrarGeofence() {
+  geofenceAtivo = false;
+  // Grava motivo do encerramento antes de encerrar
+  if (sessionId) {
+    api(`sessions?id=eq.${sessionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ ended_reason: 'geofence' })
+    }).catch(()=>{});
+  }
+  await encerrar('geofence');
+}
+
+async function encerrar(motivo='manual') {
+  clearInterval(timerInterval);
+  clearInterval(trackInterval);
+  if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  desativarWakeLock();
+  const fim = new Date();
+  try {
+    await api(`sessions?id=eq.${sessionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'finished', ended_at: fim.toISOString() })
+    });
+  } catch(e) {}
+  document.getElementById('res-inicio').textContent  = fmtHoraMin(sessionStart);
+  document.getElementById('res-fim').textContent     = fmtHoraMin(fim);
+  document.getElementById('res-duracao').textContent = calcDuration(sessionStart, fim);
+  document.getElementById('res-pts').textContent     = pontos;
+  if (motivo === 'geofence') {
+    document.getElementById('header-title-end').textContent = 'Sessão encerrada';
+    document.getElementById('header-sub-end').textContent   = 'Você saiu do perímetro do condomínio.';
+  }
+  showScreen('screen-encerrado');
+}
+
+// ── Boot ──
+window.onload = () => {
+  const params = new URLSearchParams(window.location.search);
+  token = params.get('token');
+  // Phone vem da URL (?phone=NUMERO) — gravado no banco junto com a sessão
+  window._phoneFromUrl = params.get('phone') || null;
+  // Polígono de geofence — busca do Supabase (não vem mais na URL)
+  window._fencePolygon = null;
+  carregarFenceDoServidor();
+  if (!token) {
+    token = 'DEMO-' + Math.random().toString(36).substr(2,6).toUpperCase();
+    const url = new URL(window.location.href);
+    url.searchParams.set('token', token);
+    window.history.replaceState({}, '', url);
+  }
+  document.getElementById('checkin-token-label').textContent = token;
+};
+</script>
+</body>
+</html>
