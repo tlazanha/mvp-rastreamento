@@ -572,6 +572,10 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
     <span>Link</span>
   </button>
+  <button class="tab-bar-btn" onclick="switchTab('relatorio')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span>Relatório</span>
+  </button>
   <button class="tab-bar-btn" onclick="switchTab('config')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
     <span>Config</span>
@@ -595,6 +599,31 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   <div id="p-list-historico"><div class="empty-sidebar">Carregando…</div></div>
   <button class="btn-apagar-hist" id="p-btn-apagar-hist" onclick="showDeleteModal()" style="display:none">Apagar histórico do dia</button>
 </div>
+<div class="tab-panel" id="panel-relatorio" style="background:var(--navy);overflow-y:auto;">
+
+    <div class="rel-date-row" style="padding:8px 12px;">
+      <span class="rel-date-label">De</span>
+      <input type="date" class="rel-date-input" id="p-rel-date-from" onchange="carregarRelatorio()">
+      <span class="rel-date-label">até</span>
+      <input type="date" class="rel-date-input" id="p-rel-date-to" onchange="carregarRelatorio()">
+    </div>
+    <div class="rel-filters" style="padding:8px 12px;">
+      <button class="rel-filter-btn active" onclick="filtrarRel('todos',this)">Todos</button>
+      <button class="rel-filter-btn filter-vel" onclick="filtrarRel('vel',this)">🚨 Vel.</button>
+      <button class="rel-filter-btn filter-geo" onclick="filtrarRel('geo',this)">📍 Geo</button>
+      <button class="rel-filter-btn filter-ok" onclick="filtrarRel('ok',this)">✓ OK</button>
+    </div>
+    <div class="rel-metrics" style="padding:8px 12px;grid-template-columns:1fr 1fr 1fr 1fr;">
+      <div class="rel-metric"><div class="rel-metric-label">Total</div><div class="rel-metric-val" id="p-rel-m-total">—</div></div>
+      <div class="rel-metric"><div class="rel-metric-label">Vel.</div><div class="rel-metric-val danger" id="p-rel-m-vel">—</div></div>
+      <div class="rel-metric"><div class="rel-metric-label">Geo</div><div class="rel-metric-val warning" id="p-rel-m-geo">—</div></div>
+      <div class="rel-metric"><div class="rel-metric-label">OK</div><div class="rel-metric-val success" id="p-rel-m-ok">—</div></div>
+    </div>
+    <div class="rel-list" id="p-rel-list" style="max-height:55vh;">
+      <div class="rel-empty">Selecione um período</div>
+    </div>
+</div>
+
 <div class="tab-panel" id="panel-config">
   <div style="padding:16px;">
     <div class="link-section-label" style="margin-bottom:14px;">Configurações</div>
@@ -842,6 +871,10 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
     <span>Link</span>
   </button>
+  <button class="bottom-nav-btn" onclick="openDrawer('relatorio')" id="bnav-relatorio">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span>Relatório</span>
+  </button>
   <button class="bottom-nav-btn" onclick="openDrawer('config')" id="bnav-config">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
     <span>Config</span>
@@ -870,6 +903,35 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
     </div>
     <div id="d-list-historico"><div class="empty-sidebar">Carregando…</div></div>
     <button class="btn-apagar-hist" id="d-btn-apagar-hist" onclick="showDeleteModal()" style="display:none">Apagar histórico do dia</button>
+  </div>
+</div>
+
+<div class="drawer" id="drawer-relatorio">
+  <div class="drawer-handle"></div>
+  <div class="drawer-title">Relatórios</div>
+  <div class="drawer-body" style="padding:0;overflow:hidden;display:flex;flex-direction:column;">
+
+    <div class="rel-date-row" style="padding:8px 12px;">
+      <span class="rel-date-label">De</span>
+      <input type="date" class="rel-date-input" id="d-rel-date-from" onchange="carregarRelatorio()">
+      <span class="rel-date-label">até</span>
+      <input type="date" class="rel-date-input" id="d-rel-date-to" onchange="carregarRelatorio()">
+    </div>
+    <div class="rel-filters" style="padding:8px 12px;">
+      <button class="rel-filter-btn active" onclick="filtrarRel('todos',this)">Todos</button>
+      <button class="rel-filter-btn filter-vel" onclick="filtrarRel('vel',this)">🚨 Vel.</button>
+      <button class="rel-filter-btn filter-geo" onclick="filtrarRel('geo',this)">📍 Geo</button>
+      <button class="rel-filter-btn filter-ok" onclick="filtrarRel('ok',this)">✓ OK</button>
+    </div>
+    <div class="rel-metrics" style="padding:8px 12px;grid-template-columns:1fr 1fr 1fr 1fr;">
+      <div class="rel-metric"><div class="rel-metric-label">Total</div><div class="rel-metric-val" id="d-rel-m-total">—</div></div>
+      <div class="rel-metric"><div class="rel-metric-label">Vel.</div><div class="rel-metric-val danger" id="d-rel-m-vel">—</div></div>
+      <div class="rel-metric"><div class="rel-metric-label">Geo</div><div class="rel-metric-val warning" id="d-rel-m-geo">—</div></div>
+      <div class="rel-metric"><div class="rel-metric-label">OK</div><div class="rel-metric-val success" id="d-rel-m-ok">—</div></div>
+    </div>
+    <div class="rel-list" id="d-rel-list" style="max-height:55vh;">
+      <div class="rel-empty">Selecione um período</div>
+    </div>
   </div>
 </div>
 
@@ -957,7 +1019,7 @@ function switchSidebarTab(tab) {
   // Modo relatório: sidebar mais larga
   const layout = document.querySelector('.layout');
   if (layout) layout.classList.toggle('relatorio-mode', tab === 'relatorio');
-  if (tab === 'relatorio') carregarRelatorio();
+  if (tab === 'relatorio') { iniciarRelatorio(); carregarRelatorio(); }
 }
 
 // ── Relatórios ──
@@ -976,14 +1038,22 @@ function iniciarRelatorio() {
   // Período padrão: últimos 7 dias
   const d7 = new Date(); d7.setDate(d7.getDate()-6);
   const from7 = d7.toLocaleDateString('pt-BR',{timeZone:TZ}).split('/').reverse().join('-');
-  document.getElementById('rel-date-from').value = from7;
-  document.getElementById('rel-date-to').value   = hoje;
+  ['rel-date-from','p-rel-date-from','d-rel-date-from'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=from7;});
+  ['rel-date-to','p-rel-date-to','d-rel-date-to'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=hoje;});
 }
 
 async function carregarRelatorio() {
-  const from = document.getElementById('rel-date-from')?.value;
-  const to   = document.getElementById('rel-date-to')?.value;
+  // Sincroniza datas entre desktop, portrait e landscape
+  const from = document.getElementById('rel-date-from')?.value ||
+               document.getElementById('p-rel-date-from')?.value ||
+               document.getElementById('d-rel-date-from')?.value;
+  const to   = document.getElementById('rel-date-to')?.value ||
+               document.getElementById('p-rel-date-to')?.value ||
+               document.getElementById('d-rel-date-to')?.value;
   if (!from || !to) return;
+  // Propaga datas para todos os inputs
+  ['rel-date-from','p-rel-date-from','d-rel-date-from'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=from;});
+  ['rel-date-to','p-rel-date-to','d-rel-date-to'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=to;});
 
   const [startStr] = dateRangeUTC(from);
   const [, endStr] = dateRangeUTC(to);
@@ -1049,10 +1119,13 @@ function aplicarFiltroRel() {
   const nVel = relSessions.filter(s=>s._velInfrac).length;
   const nGeo = relSessions.filter(s=>s._geoInfrac).length;
   const nOk  = relSessions.filter(s=>s._ok).length;
-  setEl('rel-m-total', relSessions.length);
-  setEl('rel-m-vel',   nVel);
-  setEl('rel-m-geo',   nGeo);
-  setEl('rel-m-ok',    nOk);
+  const metricPairs = [
+    [['rel-m-total','p-rel-m-total','d-rel-m-total'], relSessions.length],
+    [['rel-m-vel',  'p-rel-m-vel',  'd-rel-m-vel'],   nVel],
+    [['rel-m-geo',  'p-rel-m-geo',  'd-rel-m-geo'],   nGeo],
+    [['rel-m-ok',   'p-rel-m-ok',   'd-rel-m-ok'],    nOk],
+  ];
+  metricPairs.forEach(([ids, val]) => ids.forEach(id => setEl(id, val)));
   setEl('rel-footer-txt', `${relFiltered.length} de ${relSessions.length} registros`);
 
   renderRelatorio();
@@ -1065,7 +1138,10 @@ function renderRelatorio() {
     return;
   }
 
-  list.innerHTML = relFiltered.map(s => {
+  // Renderiza em todos os containers (desktop, portrait, landscape)
+  const listIds = ['rel-list','p-rel-list','d-rel-list'];
+  listIds.forEach(lid => { const el=document.getElementById(lid); if(el) el.innerHTML=''; });
+  const html = relFiltered.map(s => {
     const dur  = calcDuration(s.created_at, s.ended_at);
     const date = fmtTime(s.created_at);
     const dia  = new Date(toUTC(s.created_at)).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',timeZone:TZ});
@@ -1086,19 +1162,28 @@ function renderRelatorio() {
       <div class="rel-tags">${tags}</div>
     </div>`;
   }).join('');
+  listIds.forEach(lid => { const el=document.getElementById(lid); if(el) el.innerHTML=html; });
+  // Caso vazio
+  if (!html) listIds.forEach(lid => { const el=document.getElementById(lid); if(el) el.innerHTML='<div class="rel-empty">Nenhum registro neste filtro</div>'; });
 }
 
 async function selecionarRelRow(id, token) {
   relSelected = id;
-  renderRelatorio(); // rerender para marcar selected
+  renderRelatorio();
 
-  // Usa a mesma lógica do histórico para mostrar no mapa
   const session = relSessions.find(s => s.id === id);
   if (!session) return;
 
   // Badge no mapa
   const badge = document.getElementById('rel-map-badge');
   if (badge) { badge.textContent = token; badge.classList.add('show'); }
+
+  // Mobile: fecha drawer (landscape) ou vai para aba mapa (portrait)
+  if (isMobile()) {
+    closeDrawer();
+    if (isPortrait()) switchTab('mapa');
+    else setTimeout(() => {}, 50);
+  }
 
   await selectHistory(session);
 }
@@ -1448,7 +1533,7 @@ let currentTab = 'mapa';
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab-bar-btn').forEach((b,i) => {
-    const tabs = ['mapa','ativos','historico','link','config'];
+    const tabs = ['mapa','ativos','historico','link','relatorio','config'];
     b.classList.toggle('active', tabs[i] === tab);
   });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -1468,6 +1553,7 @@ function openDrawer(name) {
   currentDrawer = name;
   document.getElementById(`drawer-${name}`)?.classList.add('open');
   document.getElementById('drawer-overlay')?.classList.add('show');
+  if (name === 'relatorio') { iniciarRelatorio(); carregarRelatorio(); }
   document.querySelectorAll('.bottom-nav-btn').forEach((b,i) => {
     const names = ['mapa','ativos','historico','link'];
     b.classList.toggle('active', names[i] === name || (name !== 'mapa' && names[i] === name));
