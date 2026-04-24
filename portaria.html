@@ -1112,8 +1112,14 @@ async function carregarRelatorio(fromVal, toVal) {
 
 function filtrarRel(filtro, btn) {
   relFiltro = filtro;
-  document.querySelectorAll('.rel-filter-btn').forEach(b => b.classList.remove('active'));
-  btn?.classList.add('active');
+  // Sincroniza estado visual de todos os grupos de filtros (desktop + mobile)
+  document.querySelectorAll('.rel-filter-btn').forEach(b => {
+    // Detecta qual filtro este botão representa pelo seu onclick
+    const onclick = b.getAttribute('onclick') || '';
+    const match = onclick.match(/filtrarRel\('(\w+)'/);
+    const btnFiltro = match ? match[1] : null;
+    b.classList.toggle('active', btnFiltro === filtro);
+  });
   aplicarFiltroRel();
 }
 
@@ -1142,15 +1148,17 @@ function aplicarFiltroRel() {
 }
 
 function renderRelatorio() {
-  const list = document.getElementById('rel-list');
+  const listIds = ['rel-list','p-rel-list','d-rel-list'];
+
   if (!relFiltered.length) {
-    list.innerHTML = '<div class="rel-empty">Nenhum registro neste filtro</div>';
+    listIds.forEach(lid => {
+      const el = document.getElementById(lid);
+      if (el) el.innerHTML = '<div class="rel-empty">Nenhum registro neste filtro</div>';
+    });
     return;
   }
 
   // Renderiza em todos os containers (desktop, portrait, landscape)
-  const listIds = ['rel-list','p-rel-list','d-rel-list'];
-  listIds.forEach(lid => { const el=document.getElementById(lid); if(el) el.innerHTML=''; });
   const html = relFiltered.map(s => {
     const dur  = calcDuration(s.created_at, s.ended_at);
     const date = fmtTime(s.created_at);
