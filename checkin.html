@@ -853,15 +853,18 @@ function iniciarWatchVelocidade() {
   );
 }
 
-// ── setInterval 10s: grava ponto no banco se houve deslocamento ──
+// ── GPS contínuo: verifica geofence a cada 5s, grava no banco a cada 10s ──
+let _lastGravaTs = 0;
+
 function iniciarGravacao() {
   trackInterval = setInterval(() => {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
+        const now = Date.now();
 
-        // ── Verifica geofence ──
+        // ── Verifica geofence a cada chamada (5s) ──
         if (geofenceAtivo && window._fencePolygon && window._fencePolygon.length >= 3) {
           if (!pontoNoPolyCheckin(lat, lng, window._fencePolygon)) {
             addTimeline('⚠', 'Saiu do perímetro', fmtHora());
@@ -871,15 +874,14 @@ function iniciarGravacao() {
           }
         }
 
-        // Só grava se moveu mais de 5 metros
+        // ── Grava no banco só a cada 10s e se moveu ≥ 5m ──
+        if (now - _lastGravaTs < 10000) return;
         if (lastSentLat !== null) {
           const dist = distMeters(lastSentLat, lastSentLng, lat, lng);
           if (dist < 5) return;
         }
 
-        // Usa velocidade calculada pelo watchPosition (já filtrada)
         const speed = currentSpeed;
-
         try {
           await api('locations', {
             method: 'POST',
@@ -890,6 +892,7 @@ function iniciarGravacao() {
               timestamp: new Date().toISOString()
             })
           });
+          _lastGravaTs = now;
           lastSentLat = lat; lastSentLng = lng;
           pontos++;
           document.getElementById('stat-pts').textContent = pontos;
@@ -905,9 +908,9 @@ function iniciarGravacao() {
         }
       },
       () => { showError('error-gps', 'GPS indisponível…'); },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 }
     );
-  }, 10000);
+  }, 5000); // verifica geofence a cada 5s (grava a cada 10s)
 }
 
 // ── Timer de duração ──
@@ -966,7 +969,8 @@ async function iniciarAcesso() {
           token, status: 'active',
           latitude_start:  pos.coords.latitude,
           longitude_start: pos.coords.longitude,
-          ...(window._phoneFromUrl ? { phone: window._phoneFromUrl } : {})
+          ...(window._phoneFromUrl ? { phone: window._phoneFromUrl } : {}),
+          ...(window._fencePolygon ? { fence_polygon: JSON.stringify(window._fencePolygon) } : {})
         })
       });
       if (!resp.ok) { const e = await resp.json(); throw new Error(e.message||'Erro ao criar sessão'); }

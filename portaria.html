@@ -1133,12 +1133,21 @@ const H = { 'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorizati
 const api = (path,opts={}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`,{headers:{...H,...(opts.extraHeaders||{})},...opts});
 
 // ── Helpers tempo ──
-function fmtTime(iso) { if(!iso)return'--'; return new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:TZ}); }
-function fmtTimeFull(iso) { if(!iso)return'--'; return new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:TZ}); }
+// Garante que string ISO é interpretada como UTC (adiciona Z se ausente)
+function toUTC(iso) {
+  if (!iso) return null;
+  const s = String(iso);
+  // Se já tem timezone explícito (+00, Z, etc) não altera
+  if (s.endsWith('Z') || s.includes('+') || /[-+]\d{2}:\d{2}$/.test(s)) return s;
+  // Supabase às vezes retorna sem Z — força UTC
+  return s + 'Z';
+}
+function fmtTime(iso) { if(!iso)return'--'; return new Date(toUTC(iso)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:TZ}); }
+function fmtTimeFull(iso) { if(!iso)return'--'; return new Date(toUTC(iso)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:TZ}); }
 function fmtNow() { return new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:TZ}); }
 function calcDuration(start,end) {
-  const startMs = new Date(start).getTime();
-  const endMs   = end ? new Date(end).getTime() : Date.now();
+  const startMs = new Date(toUTC(start)).getTime();
+  const endMs   = end ? new Date(toUTC(end)).getTime() : Date.now();
   const diff    = endMs - startMs;
   if (diff <= 0) return '—'; // proteção contra horários invertidos
   const s  = Math.floor(diff / 1000);
@@ -1149,15 +1158,47 @@ function calcDuration(start,end) {
 }
 
 // ── Geocodificação ──
-const geocodeCache = {};
-async function reverseGeocode(lat,lng) {
-  const key=`${lat.toFixed(5)},${lng.toFixed(5)}`;
-  if(geocodeCache[key])return geocodeCache[key];
+const geocodeCache = {}; // cache em memória (sessão atual)
+
+// Geohash simples para chave de cache (precisão ~11m)
+function geoKey(lat, lng) { return `${lat.toFixed(4)},${lng.toFixed(4)}`; }
+
+async function reverseGeocode(lat, lng) {
+  const key = geoKey(lat, lng);
+
+  // 1. Cache em memória
+  if (geocodeCache[key]) return geocodeCache[key];
+
+  // 2. Cache no Supabase
   try {
-    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=pt-BR`,{headers:{'Accept-Language':'pt-BR'}});
-    const d=await r.json(); const a=d.address||{};
-    const street=a.road||a.pedestrian||a.path||a.footway||a.neighbourhood||a.suburb||d.display_name?.split(',')[0]||'—';
-    geocodeCache[key]=street; return street;
+    const cr = await api(`geocode_cache?geohash=eq.${encodeURIComponent(key)}&select=street&limit=1`);
+    const rows = await cr.json();
+    if (Array.isArray(rows) && rows.length > 0) {
+      geocodeCache[key] = rows[0].street;
+      return rows[0].street;
+    }
+  } catch(e) {}
+
+  // 3. Nominatim (apenas se não tem cache)
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=pt-BR`,
+      { headers: { 'Accept-Language': 'pt-BR' } }
+    );
+    const d = await r.json();
+    const a = d.address || {};
+    const street = a.road || a.pedestrian || a.path || a.footway ||
+                   a.neighbourhood || a.suburb || d.display_name?.split(',')[0] || '—';
+    geocodeCache[key] = street;
+
+    // Salva no Supabase em background (não bloqueia o retorno)
+    api('geocode_cache', {
+      method: 'POST',
+      extraHeaders: { 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ geohash: key, street })
+    }).catch(() => {});
+
+    return street;
   } catch { return '—'; }
 }
 
@@ -1322,13 +1363,25 @@ async function selectHistory(session) {
     const line   = L.polyline(coords,{color:'#5f5e5a',weight:3.5,opacity:0.7,dashArray:'6 4',lineJoin:'round'});
     const mStart = L.marker(coords[0],{icon:endpointIcon('#059669'),zIndexOffset:10}).bindTooltip(`Início · ${fmtTime(session.created_at)}`,{direction:'top'});
     const mEnd   = L.marker(coords[coords.length-1],{icon:endpointIcon('#dc2626'),zIndexOffset:10}).bindTooltip(`Saída · ${fmtTime(session.ended_at)}`,{direction:'top'});
-    historyLayer = L.layerGroup([line,mStart,mEnd]).addTo(map);
+    // Fence da sessão histórica (não o fence atual global)
+    const histLayers = [line, mStart, mEnd];
+    if (session.fence_polygon) {
+      try {
+        const poly = JSON.parse(session.fence_polygon);
+        if (poly && poly.length >= 3) {
+          histLayers.push(L.polygon(poly, {
+            color: 'rgba(108,79,204,0.6)', weight: 1.5,
+            fillColor: 'rgba(108,79,204,0.05)', fillOpacity: 1,
+            dashArray: '5 4'
+          }));
+        }
+      } catch(e) {}
+    }
+    historyLayer = L.layerGroup(histLayers).addTo(map);
     map.fitBounds(line.getBounds().pad(0.25));
     document.getElementById('history-badge-token').textContent = session.token;
     document.getElementById('map-history-badge').classList.add('show');
-    // Em portrait: vai para aba mapa para ver o trajeto
     if (isPortrait()) switchTab('mapa');
-    // Em landscape: fecha drawer
     if (isMobile() && !isPortrait()) closeDrawer();
   } catch { setDetailError(); }
 }
@@ -1510,7 +1563,18 @@ async function loadSessions() {
     const activeIds = new Set(ativasArr.map(s=>s.id));
     for (const id of knownActive) { if(!activeIds.has(id)) removeMarker(id); }
     knownActive = activeIds;
-    const locsAll = await Promise.all(ativasArr.map(s=>api(`locations?session_id=eq.${s.id}&order=timestamp.asc`).then(r=>r.json())));
+    // Busca todas as locations das sessões ativas em uma query só
+    // ordenado por session_id e timestamp para reconstruir trilha por sessão
+    const activeIdsList = ativasArr.map(s => s.id);
+    let locsAll = [];
+    if (activeIdsList.length > 0) {
+      const locsR = await api(`locations?session_id=in.(${activeIdsList.join(',')})&order=session_id.asc,timestamp.asc&select=session_id,latitude,longitude,speed,timestamp`);
+      const allLocs = await locsR.json().then(d => Array.isArray(d) ? d : []);
+      // Agrupa por session_id
+      const bySession = {};
+      allLocs.forEach(l => { if (!bySession[l.session_id]) bySession[l.session_id] = []; bySession[l.session_id].push(l); });
+      locsAll = ativasArr.map(s => bySession[s.id] || []);
+    }
     let hasMarkers=false;
     ativasArr.forEach((s,i)=>{ const locs=Array.isArray(locsAll[i])?locsAll[i]:[];if(locs.length){upsertMarker(s,locs);hasMarkers=true;} });
     document.getElementById('map-empty').classList.toggle('show',!hasMarkers&&!historyLayer);
@@ -1706,7 +1770,7 @@ window.addEventListener('resize', () => {
 });
 
 loadSessions();
-setInterval(loadSessions, 5000);
+setInterval(loadSessions, 3000);
 </script>
 </body>
 </html>
