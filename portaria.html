@@ -1711,16 +1711,18 @@ async function selectHistory(session) {
       } catch(e) {}
     }
     historyLayer = L.layerGroup(histLayers).addTo(map);
-    // Zoom no geofence se disponível — dá o contexto certo da visita
-    // Senão, zoom no trajeto
-    const boundsLayers = histLayers.filter(l => l.getBounds);
-    if (boundsLayers.length > 1) {
-      // Une bounds de todos (trajeto + geofence)
-      const group = L.featureGroup(boundsLayers);
-      map.fitBounds(group.getBounds().pad(0.15));
-    } else {
-      map.fitBounds(line.getBounds().pad(0.25));
-    }
+    // Delay para garantir que o painel de detalhe já abriu e o mapa
+    // recalculou suas dimensões antes do fitBounds
+    setTimeout(() => {
+      map.invalidateSize();
+      const boundsLayers = histLayers.filter(l => l.getBounds);
+      if (boundsLayers.length > 1) {
+        const group = L.featureGroup(boundsLayers);
+        map.fitBounds(group.getBounds().pad(0.15));
+      } else {
+        map.fitBounds(line.getBounds().pad(0.25));
+      }
+    }, 150);
     document.getElementById('history-badge-token').textContent = session.token;
     document.getElementById('map-history-badge').classList.add('show');
     if (isPortrait()) switchTab('mapa');
