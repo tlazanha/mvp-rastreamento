@@ -906,10 +906,10 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   </div>
 </div>
 
-<div class="drawer" id="drawer-relatorio">
+<div class="drawer" id="drawer-relatorio" style="max-height:80vh;">
   <div class="drawer-handle"></div>
   <div class="drawer-title">Relatórios</div>
-  <div class="drawer-body" style="padding:0;overflow:hidden;display:flex;flex-direction:column;">
+  <div class="drawer-body" style="padding:0;overflow-y:auto;display:flex;flex-direction:column;">
 
     <div class="rel-date-row" style="padding:8px 12px;">
       <span class="rel-date-label">De</span>
@@ -929,7 +929,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
       <div class="rel-metric"><div class="rel-metric-label">Geo</div><div class="rel-metric-val warning" id="d-rel-m-geo">—</div></div>
       <div class="rel-metric"><div class="rel-metric-label">OK</div><div class="rel-metric-val success" id="d-rel-m-ok">—</div></div>
     </div>
-    <div class="rel-list" id="d-rel-list" style="max-height:55vh;">
+    <div class="rel-list" id="d-rel-list" style="max-height:45vh;overflow-y:auto;">
       <div class="rel-empty">Selecione um período</div>
     </div>
   </div>
@@ -1019,7 +1019,7 @@ function switchSidebarTab(tab) {
   // Modo relatório: sidebar mais larga
   const layout = document.querySelector('.layout');
   if (layout) layout.classList.toggle('relatorio-mode', tab === 'relatorio');
-  if (tab === 'relatorio') { iniciarRelatorio(); carregarRelatorio(); }
+  if (tab === 'relatorio') { const d = iniciarRelatorio(); carregarRelatorio(d.from, d.to); }
 }
 
 // ── Relatórios ──
@@ -1040,14 +1040,17 @@ function iniciarRelatorio() {
   const from7 = d7.toLocaleDateString('pt-BR',{timeZone:TZ}).split('/').reverse().join('-');
   ['rel-date-from','p-rel-date-from','d-rel-date-from'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=from7;});
   ['rel-date-to','p-rel-date-to','d-rel-date-to'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=hoje;});
+  return { from: from7, to: hoje };
 }
 
-async function carregarRelatorio() {
-  // Sincroniza datas entre desktop, portrait e landscape
-  const from = document.getElementById('rel-date-from')?.value ||
+async function carregarRelatorio(fromVal, toVal) {
+  // Aceita valores diretos (de iniciarRelatorio) ou lê dos inputs
+  const from = fromVal ||
+               document.getElementById('rel-date-from')?.value ||
                document.getElementById('p-rel-date-from')?.value ||
                document.getElementById('d-rel-date-from')?.value;
-  const to   = document.getElementById('rel-date-to')?.value ||
+  const to   = toVal ||
+               document.getElementById('rel-date-to')?.value ||
                document.getElementById('p-rel-date-to')?.value ||
                document.getElementById('d-rel-date-to')?.value;
   if (!from || !to) return;
@@ -1553,7 +1556,7 @@ function openDrawer(name) {
   currentDrawer = name;
   document.getElementById(`drawer-${name}`)?.classList.add('open');
   document.getElementById('drawer-overlay')?.classList.add('show');
-  if (name === 'relatorio') { iniciarRelatorio(); carregarRelatorio(); }
+  if (name === 'relatorio') { const d = iniciarRelatorio(); carregarRelatorio(d.from, d.to); }
   document.querySelectorAll('.bottom-nav-btn').forEach((b,i) => {
     const names = ['mapa','ativos','historico','link'];
     b.classList.toggle('active', names[i] === name || (name !== 'mapa' && names[i] === name));
