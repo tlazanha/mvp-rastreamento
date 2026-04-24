@@ -476,6 +476,57 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   .fence-bar-close { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); }
   .fence-bar-save  { background: var(--green); color: #fff; }
   .fence-bar-save:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Aba Relatórios ── */
+  .layout.relatorio-mode { grid-template-columns: 500px 1fr; }
+
+  .rel-filters { display: flex; gap: 6px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.07); flex-shrink: 0; }
+  .rel-filter-btn { padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 600; font-family: var(--sans); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .rel-filter-btn.active        { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.3); }
+  .rel-filter-btn.filter-vel    { border-color: rgba(201,64,64,0.4); }
+  .rel-filter-btn.filter-vel.active { background: rgba(201,64,64,0.2); color: #f87171; border-color: rgba(201,64,64,0.6); }
+  .rel-filter-btn.filter-geo    { border-color: rgba(245,158,11,0.4); }
+  .rel-filter-btn.filter-geo.active { background: rgba(245,158,11,0.15); color: #fbbf24; border-color: rgba(245,158,11,0.6); }
+  .rel-filter-btn.filter-ok     { border-color: rgba(5,150,105,0.4); }
+  .rel-filter-btn.filter-ok.active  { background: rgba(5,150,105,0.15); color: #34d399; border-color: rgba(5,150,105,0.6); }
+
+  .rel-date-row { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-bottom: 1px solid rgba(255,255,255,0.07); flex-shrink: 0; }
+  .rel-date-label { font-size: 10px; color: rgba(255,255,255,0.4); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+  .rel-date-input { flex: 1; padding: 5px 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 7px; color: #fff; font-size: 11px; font-family: var(--mono); outline: none; color-scheme: dark; cursor: pointer; }
+
+  .rel-metrics { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; padding: 12px 16px; flex-shrink: 0; }
+  .rel-metric { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 8px 10px; }
+  .rel-metric-label { font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 4px; }
+  .rel-metric-val   { font-size: 18px; font-weight: 700; }
+  .rel-metric-val.danger  { color: #f87171; }
+  .rel-metric-val.warning { color: #fbbf24; }
+  .rel-metric-val.success { color: #34d399; }
+
+  .rel-list { flex: 1; overflow-y: auto; min-height: 0; }
+  .rel-list::-webkit-scrollbar { width: 3px; }
+  .rel-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+  .rel-header { display: grid; grid-template-columns: 1fr 90px 60px 60px 90px; gap: 0; padding: 6px 16px; background: rgba(255,255,255,0.03); font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.35); letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; }
+
+  .rel-row { display: grid; grid-template-columns: 1fr 90px 60px 60px 90px; gap: 0; padding: 9px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: background 0.12s; align-items: center; }
+  .rel-row:hover { background: rgba(255,255,255,0.05); }
+  .rel-row.selected { background: rgba(108,79,204,0.15); }
+  .rel-row-token  { font-size: 12px; font-weight: 700; color: #fff; }
+  .rel-row-phone  { font-size: 10px; color: rgba(255,255,255,0.45); font-family: var(--mono); margin-top: 1px; }
+  .rel-row-date   { font-size: 11px; color: rgba(255,255,255,0.5); font-family: var(--mono); }
+  .rel-row-dur    { font-size: 11px; color: rgba(255,255,255,0.6); }
+  .rel-row-vel    { font-size: 12px; font-weight: 700; font-family: var(--mono); }
+  .rel-row-vel.ok      { color: rgba(255,255,255,0.4); }
+  .rel-row-vel.danger  { color: #f87171; }
+  .rel-tags { display: flex; gap: 3px; flex-wrap: wrap; }
+  .rel-tag  { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .rel-tag.ok      { background: rgba(5,150,105,0.15); color: #34d399; }
+  .rel-tag.vel     { background: rgba(201,64,64,0.15); color: #f87171; }
+  .rel-tag.geo     { background: rgba(245,158,11,0.15); color: #fbbf24; }
+
+  .rel-empty { text-align: center; padding: 32px 16px; color: rgba(255,255,255,0.25); font-size: 13px; }
+  .rel-map-badge { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); z-index: 1001; background: rgba(108,79,204,0.9); border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: #fff; display: none; white-space: nowrap; box-shadow: 0 2px 10px rgba(0,0,0,0.25); }
+  .rel-map-badge.show { display: block; }
 </style>
 </head>
 <body>
@@ -600,7 +651,8 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
     <!-- Abas -->
     <div class="sidebar-tabs">
       <button class="sidebar-tab-btn active" id="stab-painel" onclick="switchSidebarTab('painel')">Painel</button>
-      <button class="sidebar-tab-btn" id="stab-config" onclick="switchSidebarTab('config')">Configurações</button>
+      <button class="sidebar-tab-btn" id="stab-relatorio" onclick="switchSidebarTab('relatorio')">Relatórios</button>
+      <button class="sidebar-tab-btn" id="stab-config" onclick="switchSidebarTab('config')">Config</button>
     </div>
 
     <!-- ── Painel ── -->
@@ -646,6 +698,41 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
         <button class="btn-apagar-hist" id="btn-apagar-hist" onclick="showDeleteModal()">Apagar histórico do dia</button>
       </div>
       <div class="sidebar-footer"><span class="footer-dot"></span>Atualização a cada 5s</div>
+    </div>
+
+    <!-- ── Relatórios ── -->
+    <div class="sidebar-panel" id="spanel-relatorio" style="flex-direction:column;">
+
+      <div class="rel-date-row">
+        <span class="rel-date-label">De</span>
+        <input type="date" class="rel-date-input" id="rel-date-from" onchange="carregarRelatorio()">
+        <span class="rel-date-label">até</span>
+        <input type="date" class="rel-date-input" id="rel-date-to" onchange="carregarRelatorio()">
+      </div>
+
+      <div class="rel-filters">
+        <button class="rel-filter-btn active" onclick="filtrarRel('todos',this)">Todos</button>
+        <button class="rel-filter-btn filter-vel" onclick="filtrarRel('vel',this)">🚨 Velocidade</button>
+        <button class="rel-filter-btn filter-geo" onclick="filtrarRel('geo',this)">📍 Geofence</button>
+        <button class="rel-filter-btn filter-ok" onclick="filtrarRel('ok',this)">✓ Sem ocorrências</button>
+      </div>
+
+      <div class="rel-metrics">
+        <div class="rel-metric"><div class="rel-metric-label">Total</div><div class="rel-metric-val" id="rel-m-total">—</div></div>
+        <div class="rel-metric"><div class="rel-metric-label">Velocidade</div><div class="rel-metric-val danger" id="rel-m-vel">—</div></div>
+        <div class="rel-metric"><div class="rel-metric-label">Geofence</div><div class="rel-metric-val warning" id="rel-m-geo">—</div></div>
+        <div class="rel-metric"><div class="rel-metric-label">Sem ocorr.</div><div class="rel-metric-val success" id="rel-m-ok">—</div></div>
+      </div>
+
+      <div class="rel-header">
+        <span>Prestador</span><span>Data</span><span>Duração</span><span>Vel. máx</span><span>Ocorrências</span>
+      </div>
+
+      <div class="rel-list" id="rel-list">
+        <div class="rel-empty">Selecione um período</div>
+      </div>
+
+      <div class="sidebar-footer"><span class="footer-dot"></span><span id="rel-footer-txt">—</span></div>
     </div>
 
     <!-- ── Configurações ── -->
@@ -713,6 +800,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
       <button class="map-history-badge-close" onclick="clearHistoryLayer()">Limpar</button>
     </div>
     <div id="map"></div>
+    <div class="rel-map-badge" id="rel-map-badge"></div>
     <div class="map-empty" id="map-empty">
       <div class="map-empty-icon">📍</div>
       <div class="map-empty-title">Nenhum prestador ativo</div>
@@ -862,10 +950,157 @@ let cfgVel = 20;   // km/h para alerta
 
 // ── Abas da sidebar desktop ──
 function switchSidebarTab(tab) {
-  ['painel','config'].forEach(t => {
+  ['painel','relatorio','config'].forEach(t => {
     document.getElementById(`stab-${t}`)?.classList.toggle('active', t === tab);
     document.getElementById(`spanel-${t}`)?.classList.toggle('active', t === tab);
   });
+  // Modo relatório: sidebar mais larga
+  const layout = document.querySelector('.layout');
+  if (layout) layout.classList.toggle('relatorio-mode', tab === 'relatorio');
+  if (tab === 'relatorio') carregarRelatorio();
+}
+
+// ── Relatórios ──
+let relSessions  = [];   // todas as sessões carregadas
+let relFiltered  = [];   // após filtro atual
+let relFiltro    = 'todos';
+let relSelected  = null;
+
+function relToday() {
+  const d = new Date();
+  return d.toLocaleDateString('pt-BR',{timeZone:TZ}).split('/').reverse().join('-');
+}
+
+function iniciarRelatorio() {
+  const hoje = relToday();
+  // Período padrão: últimos 7 dias
+  const d7 = new Date(); d7.setDate(d7.getDate()-6);
+  const from7 = d7.toLocaleDateString('pt-BR',{timeZone:TZ}).split('/').reverse().join('-');
+  document.getElementById('rel-date-from').value = from7;
+  document.getElementById('rel-date-to').value   = hoje;
+}
+
+async function carregarRelatorio() {
+  const from = document.getElementById('rel-date-from')?.value;
+  const to   = document.getElementById('rel-date-to')?.value;
+  if (!from || !to) return;
+
+  const [startStr] = dateRangeUTC(from);
+  const [, endStr] = dateRangeUTC(to);
+
+  const list = document.getElementById('rel-list');
+  list.innerHTML = '<div class="rel-empty">Carregando…</div>';
+
+  try {
+    // Busca sessões encerradas no período
+    const rs = await api(`sessions?status=eq.finished&created_at=gte.${startStr}&created_at=lte.${endStr}&order=created_at.desc&select=*`);
+    const sessions = await rs.json().then(d=>Array.isArray(d)?d:[]);
+
+    if (!sessions.length) {
+      list.innerHTML = '<div class="rel-empty">Nenhum registro no período</div>';
+      ['rel-m-total','rel-m-vel','rel-m-geo','rel-m-ok'].forEach(id=>setEl(id,'0'));
+      return;
+    }
+
+    // Busca velocidade máxima de cada sessão
+    const ids = sessions.map(s=>s.id);
+    const rl  = await api(`locations?session_id=in.(${ids.join(',')})&select=session_id,speed`);
+    const locs = await rl.json().then(d=>Array.isArray(d)?d:[]);
+
+    // Agrupa velocidades por sessão
+    const maxVel = {};
+    locs.forEach(l => {
+      const spd = l.speed||0;
+      if (!maxVel[l.session_id] || spd > maxVel[l.session_id]) maxVel[l.session_id] = spd;
+    });
+
+    // Classifica cada sessão
+    relSessions = sessions.map(s => {
+      const vel = Math.round(maxVel[s.id]||0);
+      const velInfrac = vel > cfgVel;
+      const geoInfrac = s.ended_reason === 'geofence';
+      return { ...s, _maxVel: vel, _velInfrac: velInfrac, _geoInfrac: geoInfrac,
+               _ok: !velInfrac && !geoInfrac };
+    });
+
+    aplicarFiltroRel();
+  } catch(e) {
+    list.innerHTML = '<div class="rel-empty">Erro ao carregar dados</div>';
+    console.error(e);
+  }
+}
+
+function filtrarRel(filtro, btn) {
+  relFiltro = filtro;
+  document.querySelectorAll('.rel-filter-btn').forEach(b => b.classList.remove('active'));
+  btn?.classList.add('active');
+  aplicarFiltroRel();
+}
+
+function aplicarFiltroRel() {
+  switch(relFiltro) {
+    case 'vel': relFiltered = relSessions.filter(s => s._velInfrac); break;
+    case 'geo': relFiltered = relSessions.filter(s => s._geoInfrac); break;
+    case 'ok':  relFiltered = relSessions.filter(s => s._ok); break;
+    default:    relFiltered = [...relSessions];
+  }
+
+  // Métricas
+  const nVel = relSessions.filter(s=>s._velInfrac).length;
+  const nGeo = relSessions.filter(s=>s._geoInfrac).length;
+  const nOk  = relSessions.filter(s=>s._ok).length;
+  setEl('rel-m-total', relSessions.length);
+  setEl('rel-m-vel',   nVel);
+  setEl('rel-m-geo',   nGeo);
+  setEl('rel-m-ok',    nOk);
+  setEl('rel-footer-txt', `${relFiltered.length} de ${relSessions.length} registros`);
+
+  renderRelatorio();
+}
+
+function renderRelatorio() {
+  const list = document.getElementById('rel-list');
+  if (!relFiltered.length) {
+    list.innerHTML = '<div class="rel-empty">Nenhum registro neste filtro</div>';
+    return;
+  }
+
+  list.innerHTML = relFiltered.map(s => {
+    const dur  = calcDuration(s.created_at, s.ended_at);
+    const date = fmtTime(s.created_at);
+    const dia  = new Date(toUTC(s.created_at)).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',timeZone:TZ});
+    const phone = phoneForToken(s.token, s.phone);
+    const velClass = s._velInfrac ? 'danger' : 'ok';
+    const velTxt   = s._maxVel > 0 ? s._maxVel + ' km/h' : '—';
+    const tags = [
+      s._velInfrac ? '<span class="rel-tag vel">vel</span>' : '',
+      s._geoInfrac ? '<span class="rel-tag geo">geo</span>' : '',
+      s._ok        ? '<span class="rel-tag ok">ok</span>'  : '',
+    ].join('');
+    const sel = relSelected === s.id ? ' selected' : '';
+    return `<div class="rel-row${sel}" onclick="selecionarRelRow('${s.id}','${s.token}')">
+      <div><div class="rel-row-token">${s.token}</div>${phone?`<div class="rel-row-phone">${phone}</div>`:''}</div>
+      <div class="rel-row-date">${dia}<br>${date}</div>
+      <div class="rel-row-dur">${dur}</div>
+      <div class="rel-row-vel ${velClass}">${velTxt}</div>
+      <div class="rel-tags">${tags}</div>
+    </div>`;
+  }).join('');
+}
+
+async function selecionarRelRow(id, token) {
+  relSelected = id;
+  renderRelatorio(); // rerender para marcar selected
+
+  // Usa a mesma lógica do histórico para mostrar no mapa
+  const session = relSessions.find(s => s.id === id);
+  if (!session) return;
+
+  // Badge no mapa
+  const badge = document.getElementById('rel-map-badge');
+  if (badge) { badge.textContent = token; badge.classList.add('show'); }
+
+  await selectHistory(session);
 }
 
 function loadConfig() {
@@ -1771,6 +2006,7 @@ window.addEventListener('resize', () => {
   }, 200);
 });
 
+iniciarRelatorio();
 loadSessions();
 setInterval(loadSessions, 3000);
 </script>

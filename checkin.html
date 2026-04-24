@@ -1035,6 +1035,13 @@ async function confirmarEncerramento() {
 // Encerramento automático por geofence — sem confirmação
 async function encerrarGeofence() {
   geofenceAtivo = false;
+  // Grava motivo do encerramento antes de encerrar
+  if (sessionId) {
+    api(`sessions?id=eq.${sessionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ ended_reason: 'geofence' })
+    }).catch(()=>{});
+  }
   await encerrar('geofence');
 }
 
