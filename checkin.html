@@ -522,8 +522,8 @@
 <div id="screen-checkin" class="screen active">
   <div class="header">
     <div class="header-eyebrow"><span class="eyebrow-line"></span>Acesso ao condomínio</div>
-    <div class="header-title">Suas informações</div>
-    <div class="header-sub">Preencha os dados antes de entrar</div>
+    <div class="header-title">Autorização de entrada</div>
+    <div class="header-sub">Informe seus dados e inicie o acesso</div>
     <div class="header-token-badge">
       <span class="token-key">Token</span>
       <span id="checkin-token-label">Carregando…</span>
@@ -566,68 +566,13 @@
     </div>
 
     <div class="error-msg" id="error-msg"></div>
-    <button class="btn btn-disabled" id="btn-iniciar" onclick="enviarIdentificacao()">
-      Solicitar acesso
+    <button class="btn btn-disabled" id="btn-iniciar" onclick="iniciarAcessoDirecto()">
+      Iniciar acesso
     </button>
     <p class="lgpd-note">Seus dados são tratados conforme a LGPD</p>
   </div>
 </div>
 
-<!-- ── TELA 2: Aguardando liberação ── -->
-<div id="screen-aguardando" class="screen">
-  <div class="header">
-    <div class="header-eyebrow"><span class="eyebrow-line"></span>Solicitação enviada</div>
-    <div class="header-title">Aguardando liberação</div>
-    <div class="header-sub">O porteiro está verificando sua entrada</div>
-  </div>
-  <div class="body">
-    <div class="waiting-anim">
-      <div class="waiting-dot"></div>
-      <div class="waiting-dot"></div>
-      <div class="waiting-dot"></div>
-    </div>
-    <div class="waiting-info">
-      <div class="waiting-info-row">
-        <span class="waiting-info-label">Nome</span>
-        <span class="waiting-info-val" id="wait-nome">—</span>
-      </div>
-      <div class="waiting-info-row">
-        <span class="waiting-info-label">Telefone</span>
-        <span class="waiting-info-val" id="wait-tel">—</span>
-      </div>
-      <div class="waiting-info-row">
-        <span class="waiting-info-label">Destino</span>
-        <span class="waiting-info-val" id="wait-dest">—</span>
-      </div>
-    </div>
-    <div class="card" style="text-align:center; padding:20px;">
-      <p style="font-size:13px; color:var(--text-2); line-height:1.6;">
-        Aguarde enquanto o porteiro confirma sua entrada com o morador.<br>
-        <strong>Não feche esta tela.</strong>
-      </p>
-    </div>
-    <div class="error-msg" id="error-aguardo"></div>
-  </div>
-</div>
-
-<!-- ── TELA 3: Acesso liberado ── -->
-<div id="screen-liberado" class="screen">
-  <div class="header" style="background: linear-gradient(135deg, #166534 0%, #15803d 100%);">
-    <div class="header-eyebrow"><span class="eyebrow-line"></span>Acesso liberado</div>
-    <div class="header-title">✓ Entrada autorizada</div>
-    <div class="header-sub">Você foi liberado pelo porteiro</div>
-  </div>
-  <div class="body">
-    <div class="card" style="text-align:center; padding:24px 20px;">
-      <p style="font-size:15px; font-weight:600; color:var(--text); margin-bottom:8px;">Pronto para entrar!</p>
-      <p style="font-size:13px; color:var(--text-2); line-height:1.6;">Toque em <strong>Iniciar acesso</strong> para ativar o rastreamento e registrar sua entrada.</p>
-    </div>
-    <button class="btn btn-primary" onclick="iniciarAcesso()">
-      Iniciar acesso
-    </button>
-    <p class="lgpd-note">Mantenha esta tela aberta durante toda a visita</p>
-  </div>
-</div>
 
 <!-- ── TELA 2: Rastreamento ativo ── -->
 <div id="screen-ativo" class="screen">
@@ -1051,8 +996,8 @@ function iniciarVoz() {
   recognition.start();
 }
 
-// ── Envio de identificação → cria sessão pending ──
-async function enviarIdentificacao() {
+// ── Iniciar acesso direto: salva dados e começa rastreamento ──
+async function iniciarAcessoDirecto() {
   const nome  = document.getElementById('input-nome')?.value.trim();
   const tel   = document.getElementById('input-telefone')?.value.trim();
   const dest  = document.getElementById('input-destino')?.value.trim();
@@ -1064,98 +1009,53 @@ async function enviarIdentificacao() {
   }
 
   const btn = document.getElementById('btn-iniciar');
-  btn.innerHTML = 'Enviando… <span class="loader"></span>';
+  btn.innerHTML = 'Verificando… <span class="loader"></span>';
   btn.className = 'btn btn-disabled';
   hideError('error-msg');
 
-  // Verificação de uso único do token
+  // Verificação de uso único
   try {
     const check = await api(`sessions?token=eq.${token}&status=in.(pending,active,finished)&select=id,status&limit=1`);
     const existing = await check.json();
     if (Array.isArray(existing) && existing.length > 0) {
       const st = existing[0].status;
       const msg = st === 'active'
-        ? 'Este link já está sendo usado. Solicite um novo link à portaria.'
-        : st === 'pending'
-        ? 'Este link já foi enviado à portaria. Aguarde a liberação.'
+        ? 'Este link já está em uso. Solicite um novo link à portaria.'
         : 'Este link já foi utilizado. Solicite um novo link à portaria.';
       showError('error-msg', msg);
-      btn.innerHTML = 'Solicitar acesso'; btn.className = 'btn btn-disabled';
+      btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-disabled';
       return;
     }
   } catch(e) { console.warn('Verificação falhou:', e); }
 
-  try {
-    // Cria sessão com status 'pending'
-    const resp = await api('sessions', {
-      method: 'POST',
-      extraHeaders: { 'Prefer': 'return=representation' },
-      body: JSON.stringify({
-        token, status: 'pending',
-        visitor_name:  nome,
-        visitor_phone: tel.replace(/\D/g,''),
-        destination:   dest,
-        ...(window._phoneFromUrl ? { phone: window._phoneFromUrl } : {}),
-        ...(window._fencePolygon ? { fence_polygon: JSON.stringify(window._fencePolygon) } : {})
-      })
-    });
-    if (!resp.ok) { const e = await resp.json(); throw new Error(e.message||'Erro'); }
-    const data = await resp.json();
-    sessionId = data[0].id;
-
-    // Preenche tela de aguardo
-    document.getElementById('wait-nome').textContent = nome;
-    document.getElementById('wait-tel').textContent  = tel;
-    document.getElementById('wait-dest').textContent = dest;
-
-    showScreen('screen-liberado');
-
-  } catch(e) {
-    showError('error-msg', `Erro: ${e.message}`);
-    btn.innerHTML = 'Solicitar acesso'; btn.className = 'btn btn-primary';
-  }
-}
-
-// ── Polling: aguarda porteiro liberar (status → active) ──
-function iniciarPolling() {
-  pollInterval = setInterval(async () => {
-    try {
-      const r = await api(`sessions?id=eq.${sessionId}&select=status&limit=1`);
-      const rows = await r.json();
-      if (!Array.isArray(rows) || !rows.length) return;
-      const status = rows[0].status;
-      if (status === 'active') {
-        clearInterval(pollInterval);
-        showScreen('screen-liberado');
-      } else if (status === 'finished') {
-        clearInterval(pollInterval);
-        showError('error-aguardo', 'Acesso negado pela portaria. Aguarde orientações.');
-      }
-    } catch(e) { console.warn('Polling falhou:', e); }
-  }, 3000);
-}
-
-// ── Iniciar rastreamento (após liberação) ──
-async function iniciarAcesso() {
-  const btn = document.querySelector('#screen-liberado .btn');
-  if (btn) { btn.innerHTML = 'Iniciando… <span class="loader"></span>'; btn.className = 'btn btn-disabled'; }
+  btn.innerHTML = 'Aguardando GPS… <span class="loader"></span>';
 
   if (!navigator.geolocation) {
     showError('error-msg', 'Seu navegador não suporta geolocalização.');
-    return;
+    btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary'; return;
   }
 
   navigator.geolocation.getCurrentPosition(async (pos) => {
     try {
-      // Atualiza sessão com posição inicial e status active
-      sessionStart = new Date();
-      await api(`sessions?id=eq.${sessionId}`, {
-        method: 'PATCH',
+      // Cria sessão já como active
+      const resp = await api('sessions', {
+        method: 'POST',
+        extraHeaders: { 'Prefer': 'return=representation' },
         body: JSON.stringify({
+          token, status: 'active',
+          visitor_name:  nome,
+          visitor_phone: tel.replace(/\D/g,''),
+          destination:   dest,
           latitude_start:  pos.coords.latitude,
-          longitude_start: pos.coords.longitude
+          longitude_start: pos.coords.longitude,
+          ...(window._phoneFromUrl ? { phone: window._phoneFromUrl } : {}),
+          ...(window._fencePolygon ? { fence_polygon: JSON.stringify(window._fencePolygon) } : {})
         })
       });
+      if (!resp.ok) { const e = await resp.json(); throw new Error(e.message||'Erro'); }
+      const data = await resp.json();
+      sessionId    = data[0].id;
+      sessionStart = new Date();
 
       // Grava ponto inicial
       const initSpeed = pos.coords.speed != null ? Math.round(pos.coords.speed * 3.6) : 0;
@@ -1182,7 +1082,6 @@ async function iniciarAcesso() {
       iniciarGravacao();
       iniciarTimer();
 
-      // Fence: informar se ativo
       setTimeout(() => {
         if (window._fencePolygon && window._fencePolygon.length >= 3) {
           addTimeline('🔒', `Geofence ativo · ${window._fencePolygon.length} pts`, fmtHora());
@@ -1191,14 +1090,14 @@ async function iniciarAcesso() {
 
     } catch(e) {
       showError('error-msg', `Erro: ${e.message}`);
-      if (btn) { btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary'; }
+      btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary';
     }
   }, (err) => {
     let msg = 'Não foi possível obter localização. ';
     if (err.code === 1) msg += 'Permissão negada.';
     else msg += 'Verifique se o GPS está ativado.';
     showError('error-msg', msg);
-    if (btn) { btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary'; }
+    btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary';
   }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
 }
 
