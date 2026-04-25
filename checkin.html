@@ -437,6 +437,33 @@
 
   .spacer { flex: 1; }
 
+  /* ── Formulário de identificação ── */
+  .form-field { margin-bottom: 14px; }
+  .form-label { font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
+  .form-input { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border-mid); border-radius: 12px; font-size: 15px; font-family: var(--sans); color: var(--text); background: var(--surface); outline: none; transition: border-color 0.15s; }
+  .form-input:focus { border-color: var(--green); }
+  .form-input::placeholder { color: var(--text-3); }
+
+  /* ── Botão de voz ── */
+  .voice-btn { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--bg); border: 1.5px solid var(--border-mid); border-radius: 12px; color: var(--text-2); font-size: 13px; font-weight: 600; font-family: var(--sans); cursor: pointer; transition: all 0.15s; width: 100%; justify-content: center; margin-bottom: 14px; }
+  .voice-btn:hover { border-color: var(--green); color: var(--green-text); }
+  .voice-btn.recording { background: #fef2f2; border-color: var(--red); color: var(--red); animation: pulse-red 1s ease-in-out infinite; }
+  .voice-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+  @keyframes pulse-red { 0%,100%{opacity:1} 50%{opacity:0.6} }
+  .voice-hint { font-size: 11.5px; color: var(--text-3); text-align: center; margin-bottom: 12px; line-height: 1.5; }
+
+  /* ── Tela de aguardo ── */
+  .waiting-anim { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 24px 0; }
+  .waiting-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); animation: bounce 1.2s ease-in-out infinite; }
+  .waiting-dot:nth-child(2) { animation-delay: 0.2s; }
+  .waiting-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-10px)} }
+  .waiting-info { background: var(--bg); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .waiting-info-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .waiting-info-row:last-child { border-bottom: none; }
+  .waiting-info-label { color: var(--text-3); font-weight: 500; }
+  .waiting-info-val { color: var(--text); font-weight: 600; }
+
   /* ── Aviso de tela ativa ── */
   .tela-aviso {
     display: flex;
@@ -491,27 +518,42 @@
 </head>
 <body>
 
-<!-- ── TELA 1: Check-in ── -->
+<!-- ── TELA 1: Identificação ── -->
 <div id="screen-checkin" class="screen active">
   <div class="header">
-    <div class="header-eyebrow">
-      <span class="eyebrow-line"></span>
-      Acesso ao condomínio
-    </div>
-    <div class="header-title">Autorização de entrada</div>
-    <div class="header-sub">Rastreamento para fins de segurança</div>
+    <div class="header-eyebrow"><span class="eyebrow-line"></span>Acesso ao condomínio</div>
+    <div class="header-title">Suas informações</div>
+    <div class="header-sub">Preencha os dados antes de entrar</div>
     <div class="header-token-badge">
       <span class="token-key">Token</span>
       <span id="checkin-token-label">Carregando…</span>
     </div>
   </div>
-
   <div class="body">
+
     <div class="card">
-      <div class="card-label">Por que precisamos da sua localização?</div>
-      <p class="termo-text">
-        Para garantir a segurança do condomínio, registramos seu trajeto enquanto você estiver nas dependências. Os dados são usados exclusivamente para fins de segurança e descartados após sua saída.
-      </p>
+      <div class="card-label">Preencher por voz</div>
+      <button class="voice-btn" id="btn-voice" onclick="iniciarVoz()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        <span id="voice-btn-label">Falar meus dados</span>
+      </button>
+      <p class="voice-hint" id="voice-hint">Toque e diga: seu nome, telefone e onde vai</p>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Dados de identificação</div>
+      <div class="form-field">
+        <label class="form-label">Nome completo <span style="color:var(--red)">*</span></label>
+        <input class="form-input" type="text" id="input-nome" placeholder="Seu nome completo" autocomplete="name">
+      </div>
+      <div class="form-field">
+        <label class="form-label">Telefone <span style="color:var(--red)">*</span></label>
+        <input class="form-input" type="tel" id="input-telefone" placeholder="(XX) 9XXXX-XXXX" autocomplete="tel">
+      </div>
+      <div class="form-field" style="margin-bottom:0">
+        <label class="form-label">Destino no condomínio <span style="color:var(--red)">*</span></label>
+        <input class="form-input" type="text" id="input-destino" placeholder="Ex: Rua das Flores, 42 — Apto 3">
+      </div>
     </div>
 
     <div class="card">
@@ -524,12 +566,66 @@
     </div>
 
     <div class="error-msg" id="error-msg"></div>
+    <button class="btn btn-disabled" id="btn-iniciar" onclick="enviarIdentificacao()">
+      Solicitar acesso
+    </button>
+    <p class="lgpd-note">Seus dados são tratados conforme a LGPD</p>
+  </div>
+</div>
 
-    <button class="btn btn-disabled" id="btn-iniciar" onclick="iniciarAcesso()">
+<!-- ── TELA 2: Aguardando liberação ── -->
+<div id="screen-aguardando" class="screen">
+  <div class="header">
+    <div class="header-eyebrow"><span class="eyebrow-line"></span>Solicitação enviada</div>
+    <div class="header-title">Aguardando liberação</div>
+    <div class="header-sub">O porteiro está verificando sua entrada</div>
+  </div>
+  <div class="body">
+    <div class="waiting-anim">
+      <div class="waiting-dot"></div>
+      <div class="waiting-dot"></div>
+      <div class="waiting-dot"></div>
+    </div>
+    <div class="waiting-info">
+      <div class="waiting-info-row">
+        <span class="waiting-info-label">Nome</span>
+        <span class="waiting-info-val" id="wait-nome">—</span>
+      </div>
+      <div class="waiting-info-row">
+        <span class="waiting-info-label">Telefone</span>
+        <span class="waiting-info-val" id="wait-tel">—</span>
+      </div>
+      <div class="waiting-info-row">
+        <span class="waiting-info-label">Destino</span>
+        <span class="waiting-info-val" id="wait-dest">—</span>
+      </div>
+    </div>
+    <div class="card" style="text-align:center; padding:20px;">
+      <p style="font-size:13px; color:var(--text-2); line-height:1.6;">
+        Aguarde enquanto o porteiro confirma sua entrada com o morador.<br>
+        <strong>Não feche esta tela.</strong>
+      </p>
+    </div>
+    <div class="error-msg" id="error-aguardo"></div>
+  </div>
+</div>
+
+<!-- ── TELA 3: Acesso liberado ── -->
+<div id="screen-liberado" class="screen">
+  <div class="header" style="background: linear-gradient(135deg, #166534 0%, #15803d 100%);">
+    <div class="header-eyebrow"><span class="eyebrow-line"></span>Acesso liberado</div>
+    <div class="header-title">✓ Entrada autorizada</div>
+    <div class="header-sub">Você foi liberado pelo porteiro</div>
+  </div>
+  <div class="body">
+    <div class="card" style="text-align:center; padding:24px 20px;">
+      <p style="font-size:15px; font-weight:600; color:var(--text); margin-bottom:8px;">Pronto para entrar!</p>
+      <p style="font-size:13px; color:var(--text-2); line-height:1.6;">Toque em <strong>Iniciar acesso</strong> para ativar o rastreamento e registrar sua entrada.</p>
+    </div>
+    <button class="btn btn-primary" onclick="iniciarAcesso()">
       Iniciar acesso
     </button>
-
-    <p class="lgpd-note">Seus dados são tratados conforme a LGPD</p>
+    <p class="lgpd-note">Mantenha esta tela aberta durante toda a visita</p>
   </div>
 </div>
 
@@ -675,19 +771,19 @@ const api = (path, opts={}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, { header
 
 // ── Estado ──
 let token = null, sessionId = null;
-let watchId = null, timerInterval = null, trackInterval = null;
+let watchId = null, timerInterval = null, trackInterval = null, pollInterval = null;
 let sessionStart = null;
 let pontos = 0, timelineItems = [];
 let lastSentLat = null, lastSentLng = null;
-let currentSpeed = 0; // velocidade atual suavizada em km/h
+let currentSpeed = 0;
+let _lastGravaTs = 0;
 
-// ── Geofence (só polígono — sem raio circular) ──
+// ── Geofence ──
 let geofenceAtivo = false;
 
-// Janela deslizante de posições para cálculo de velocidade suavizada
-// Guarda os últimos N pontos com { lat, lng, ts }
-const SPEED_WINDOW = 4;   // nº de pontos na janela
-const MIN_DIST_M   = 2;   // descarta pontos praticamente idênticos (ruído estático)
+// ── Velocidade (janela deslizante) ──
+const SPEED_WINDOW = 4;
+const MIN_DIST_M   = 2;
 let posWindow = [];
 
 // ── Wake Lock ──
@@ -727,21 +823,12 @@ function calcDuration(start, end) {
   if (h > 0) return `${h}h ${m}m`;
   return `${m}m ${ss}s`;
 }
-
-// Busca polígono de geofence do Supabase
-async function carregarFenceDoServidor() {
-  try {
-    const r = await api('config?key=eq.fence_polygon&select=value&limit=1');
-    const rows = await r.json();
-    if (Array.isArray(rows) && rows.length > 0) {
-      window._fencePolygon = JSON.parse(rows[0].value);
-    }
-  } catch(e) {
-    console.warn('Fence não carregado:', e);
-  }
+function distMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000, toRad = x => x * Math.PI / 180;
+  const dLat = toRad(lat2-lat1), dLng = toRad(lng2-lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
-
-// Ray casting — ponto dentro do polígono
 function pontoNoPolyCheckin(lat, lng, poly) {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -753,28 +840,26 @@ function pontoNoPolyCheckin(lat, lng, poly) {
   return inside;
 }
 
-// Distância em metros (Haversine)
-function distMeters(lat1, lng1, lat2, lng2) {
-  const R = 6371000, toRad = x => x * Math.PI / 180;
-  const dLat = toRad(lat2-lat1), dLng = toRad(lng2-lng1);
-  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
 // ── UI ──
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
 function toggleBtn(checked) {
-  document.getElementById('btn-iniciar').className = checked ? 'btn btn-primary' : 'btn btn-disabled';
+  const nome  = document.getElementById('input-nome')?.value.trim();
+  const tel   = document.getElementById('input-telefone')?.value.trim();
+  const dest  = document.getElementById('input-destino')?.value.trim();
+  const valid = checked && nome && tel && dest;
+  document.getElementById('btn-iniciar').className = valid ? 'btn btn-primary' : 'btn btn-disabled';
 }
-function showError(id, msg) { const el=document.getElementById(id); el.textContent=msg; el.style.display='block'; }
-function hideError(id) { document.getElementById(id).style.display='none'; }
+function showError(id, msg) { const el=document.getElementById(id); if(el){el.textContent=msg; el.style.display='block';} }
+function hideError(id) { const el=document.getElementById(id); if(el) el.style.display='none'; }
 function addTimeline(icon, title, time) {
   timelineItems.unshift({ icon, title, time });
   if (timelineItems.length > 5) timelineItems.pop();
-  document.getElementById('timeline').innerHTML = timelineItems.map(i =>
+  const el = document.getElementById('timeline');
+  if (!el) return;
+  el.innerHTML = timelineItems.map(i =>
     `<div class="timeline-item">
       <div class="timeline-icon">${i.icon}</div>
       <div class="timeline-text">
@@ -784,199 +869,209 @@ function addTimeline(icon, title, time) {
     </div>`).join('');
 }
 
-// ── Cálculo de velocidade por janela deslizante ──
-// Usa os últimos SPEED_WINDOW pontos GPS para calcular distância total / tempo total.
-// Isso suaviza o ruído sem introduzir delay artificial — a janela desliza
-// continuamente, então a velocidade atualiza a cada novo ponto recebido.
-function calcSpeedWindow() {
-  if (posWindow.length < 2) return 0;
+// Valida formulário ao digitar
+['input-nome','input-telefone','input-destino'].forEach(id => {
+  document.getElementById(id)?.addEventListener('input', () => {
+    toggleBtn(document.getElementById('termo-check')?.checked || false);
+  });
+});
 
-  const first = posWindow[0];
-  const last  = posWindow[posWindow.length - 1];
-  const dt    = (last.ts - first.ts) / 1000; // segundos
-  if (dt < 1) return 0;
+// ── Voz com LLM ──
+let mediaRecorder = null, audioChunks = [];
 
-  // Distância total percorrida na janela (soma dos segmentos)
-  let totalDist = 0;
-  for (let i = 1; i < posWindow.length; i++) {
-    totalDist += distMeters(
-      posWindow[i-1].lat, posWindow[i-1].lng,
-      posWindow[i].lat,   posWindow[i].lng
-    );
+async function iniciarVoz() {
+  const btn = document.getElementById('btn-voice');
+  const label = document.getElementById('voice-btn-label');
+  const hint  = document.getElementById('voice-hint');
+
+  // Se já está gravando, para
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+    return;
   }
 
-  return (totalDist / dt) * 3.6; // km/h
-}
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
 
-// ── watchPosition: alimenta janela e atualiza velocidade na UI ──
-function iniciarWatchVelocidade() {
-  watchId = navigator.geolocation.watchPosition(
-    (pos) => {
-      const now = Date.now();
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
-      // 1ª opção: speed nativa do SO — iOS Safari fornece isso bem filtrado
-      if (pos.coords.speed != null && pos.coords.speed >= 0) {
-        currentSpeed = Math.round(pos.coords.speed * 3.6);
-        // Alimenta a janela mesmo assim (para gravação e fallback)
-        posWindow.push({ lat, lng, ts: now });
-        if (posWindow.length > SPEED_WINDOW) posWindow.shift();
-        document.getElementById('stat-vel').textContent = currentSpeed;
-        return;
+    mediaRecorder.onstop = async () => {
+      btn.classList.remove('recording');
+      label.textContent = 'Processando…';
+      btn.disabled = true;
+      hint.textContent = 'Aguarde, entendendo o que você disse…';
+      stream.getTracks().forEach(t => t.stop());
+
+      try {
+        // Converte áudio para base64
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        const base64 = await new Promise(res => {
+          const reader = new FileReader();
+          reader.onload = () => res(reader.result.split(',')[1]);
+          reader.readAsDataURL(blob);
+        });
+
+        // Envia para Claude via API
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 300,
+            messages: [{
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: 'Extraia do áudio: nome completo, telefone e destino (rua/bloco/apto). Responda SOMENTE com JSON: {"nome":"...","telefone":"...","destino":"..."}. Se não entender algum campo, deixe vazio.'
+                },
+                {
+                  type: 'document',
+                  source: { type: 'base64', media_type: 'audio/webm', data: base64 }
+                }
+              ]
+            }]
+          })
+        });
+
+        const data = await resp.json();
+        const text = data.content?.[0]?.text || '{}';
+        const clean = text.replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(clean);
+
+        if (parsed.nome)     document.getElementById('input-nome').value = parsed.nome;
+        if (parsed.telefone) document.getElementById('input-telefone').value = parsed.telefone;
+        if (parsed.destino)  document.getElementById('input-destino').value = parsed.destino;
+
+        hint.textContent = 'Verifique os dados e corrija se necessário';
+        toggleBtn(document.getElementById('termo-check')?.checked || false);
+      } catch(e) {
+        hint.textContent = 'Não consegui entender. Preencha manualmente.';
+        console.error(e);
       }
 
-      // 2ª opção: janela deslizante (Android Chrome — speed nativa indisponível)
-      // Só adiciona ponto se se moveu pelo menos MIN_DIST_M do último
-      if (posWindow.length > 0) {
-        const prev = posWindow[posWindow.length - 1];
-        const d = distMeters(prev.lat, prev.lng, lat, lng);
-        if (d < MIN_DIST_M) {
-          // Parado: limpa janela para não acumular ruído de GPS estático
-          posWindow = [];
-          currentSpeed = 0;
-          document.getElementById('stat-vel').textContent = 0;
-          return;
-        }
-      }
+      label.textContent = 'Falar meus dados';
+      btn.disabled = false;
+    };
 
-      posWindow.push({ lat, lng, ts: now });
-      if (posWindow.length > SPEED_WINDOW) posWindow.shift();
+    mediaRecorder.start();
+    btn.classList.add('recording');
+    label.textContent = 'Gravando… toque para parar';
+    hint.textContent = 'Fale: seu nome, telefone e onde vai';
 
-      const speed = calcSpeedWindow();
-      // Limite superior razoável para condomínio (carro rápido = 60 km/h)
-      currentSpeed = Math.round(Math.min(speed, 60));
-      document.getElementById('stat-vel').textContent = currentSpeed;
-    },
-    () => {},
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-  );
+  } catch(e) {
+    hint.textContent = 'Microfone indisponível. Preencha manualmente.';
+  }
 }
 
-// ── GPS contínuo: verifica geofence a cada 5s, grava no banco a cada 10s ──
-let _lastGravaTs = 0;
+// ── Envio de identificação → cria sessão pending ──
+async function enviarIdentificacao() {
+  const nome  = document.getElementById('input-nome')?.value.trim();
+  const tel   = document.getElementById('input-telefone')?.value.trim();
+  const dest  = document.getElementById('input-destino')?.value.trim();
+  const termo = document.getElementById('termo-check')?.checked;
 
-function iniciarGravacao() {
-  trackInterval = setInterval(() => {
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        const now = Date.now();
+  if (!nome || !tel || !dest || !termo) {
+    showError('error-msg', 'Preencha todos os campos e aceite o termo.');
+    return;
+  }
 
-        // ── Verifica geofence a cada chamada (5s) ──
-        if (geofenceAtivo && window._fencePolygon && window._fencePolygon.length >= 3) {
-          if (!pontoNoPolyCheckin(lat, lng, window._fencePolygon)) {
-            addTimeline('⚠', 'Saiu do perímetro', fmtHora());
-            showError('error-gps', '⚠ Você saiu do perímetro do condomínio. Sessão encerrada automaticamente.');
-            await encerrarGeofence();
-            return;
-          }
-        }
-
-        // ── Grava no banco só a cada 10s e se moveu ≥ 5m ──
-        if (now - _lastGravaTs < 10000) return;
-        if (lastSentLat !== null) {
-          const dist = distMeters(lastSentLat, lastSentLng, lat, lng);
-          if (dist < 5) return;
-        }
-
-        const speed = currentSpeed;
-        try {
-          await api('locations', {
-            method: 'POST',
-            body: JSON.stringify({
-              session_id: sessionId,
-              latitude: lat, longitude: lng,
-              speed: speed,
-              timestamp: new Date().toISOString()
-            })
-          });
-          _lastGravaTs = now;
-          lastSentLat = lat; lastSentLng = lng;
-          pontos++;
-          document.getElementById('stat-pts').textContent = pontos;
-          document.getElementById('stat-upd').textContent = fmtHora();
-          hideError('error-gps');
-          if (speed > 30) {
-            addTimeline('↑', `Velocidade: ${speed} km/h`, fmtHora());
-          } else {
-            addTimeline('◎', `Ponto registrado · ${speed} km/h`, fmtHora());
-          }
-        } catch(e) {
-          showError('error-gps', 'Falha ao enviar. Tentando novamente…');
-        }
-      },
-      () => { showError('error-gps', 'GPS indisponível…'); },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 }
-    );
-  }, 5000); // verifica geofence a cada 5s (grava a cada 10s)
-}
-
-// ── Timer de duração ──
-function iniciarTimer() {
-  timerInterval = setInterval(() => {
-    if (!sessionStart) return;
-    const diff = Math.floor((Date.now() - sessionStart) / 1000);
-    const m = Math.floor(diff / 60).toString().padStart(2,'0');
-    const s = (diff % 60).toString().padStart(2,'0');
-    document.getElementById('stat-tempo').textContent = `${m}:${s}`;
-  }, 1000);
-}
-
-// ── Check-in ──
-async function iniciarAcesso() {
   const btn = document.getElementById('btn-iniciar');
-  btn.innerHTML = 'Verificando… <span class="loader"></span>';
+  btn.innerHTML = 'Enviando… <span class="loader"></span>';
   btn.className = 'btn btn-disabled';
   hideError('error-msg');
 
-  // ── Verificação de uso único do token ──
+  // Verificação de uso único do token
   try {
-    const check = await api(`sessions?token=eq.${token}&status=in.(active,finished)&select=id,status&limit=1`);
+    const check = await api(`sessions?token=eq.${token}&status=in.(pending,active,finished)&select=id,status&limit=1`);
     const existing = await check.json();
     if (Array.isArray(existing) && existing.length > 0) {
-      const status = existing[0].status;
-      const msg = status === 'active'
-        ? 'Este link já está sendo usado por outra pessoa. Solicite um novo link à portaria.'
-        : 'Este link de acesso já foi utilizado. Solicite um novo link à portaria.';
+      const st = existing[0].status;
+      const msg = st === 'active'
+        ? 'Este link já está sendo usado. Solicite um novo link à portaria.'
+        : st === 'pending'
+        ? 'Este link já foi enviado à portaria. Aguarde a liberação.'
+        : 'Este link já foi utilizado. Solicite um novo link à portaria.';
       showError('error-msg', msg);
-      // Bloqueia o botão permanentemente — link inválido
-      btn.innerHTML = 'Link já utilizado';
-      btn.className = 'btn btn-disabled';
-      // Desmarca o checkbox para deixar claro que não pode prosseguir
-      document.getElementById('termo-check').checked = false;
+      btn.innerHTML = 'Solicitar acesso'; btn.className = 'btn btn-disabled';
       return;
     }
+  } catch(e) { console.warn('Verificação falhou:', e); }
+
+  try {
+    // Cria sessão com status 'pending'
+    const resp = await api('sessions', {
+      method: 'POST',
+      extraHeaders: { 'Prefer': 'return=representation' },
+      body: JSON.stringify({
+        token, status: 'pending',
+        visitor_name:  nome,
+        visitor_phone: tel.replace(/\D/g,''),
+        destination:   dest,
+        ...(window._phoneFromUrl ? { phone: window._phoneFromUrl } : {}),
+        ...(window._fencePolygon ? { fence_polygon: JSON.stringify(window._fencePolygon) } : {})
+      })
+    });
+    if (!resp.ok) { const e = await resp.json(); throw new Error(e.message||'Erro'); }
+    const data = await resp.json();
+    sessionId = data[0].id;
+
+    // Preenche tela de aguardo
+    document.getElementById('wait-nome').textContent = nome;
+    document.getElementById('wait-tel').textContent  = tel;
+    document.getElementById('wait-dest').textContent = dest;
+
+    showScreen('screen-aguardando');
+    iniciarPolling();
+
   } catch(e) {
-    // Falha na verificação — permite continuar (não bloqueia por erro de rede)
-    console.warn('Verificação de token falhou:', e);
+    showError('error-msg', `Erro: ${e.message}`);
+    btn.innerHTML = 'Solicitar acesso'; btn.className = 'btn btn-primary';
   }
+}
+
+// ── Polling: aguarda porteiro liberar (status → active) ──
+function iniciarPolling() {
+  pollInterval = setInterval(async () => {
+    try {
+      const r = await api(`sessions?id=eq.${sessionId}&select=status&limit=1`);
+      const rows = await r.json();
+      if (!Array.isArray(rows) || !rows.length) return;
+      const status = rows[0].status;
+      if (status === 'active') {
+        clearInterval(pollInterval);
+        showScreen('screen-liberado');
+      } else if (status === 'finished') {
+        clearInterval(pollInterval);
+        showError('error-aguardo', 'Acesso negado pela portaria. Aguarde orientações.');
+      }
+    } catch(e) { console.warn('Polling falhou:', e); }
+  }, 3000);
+}
+
+// ── Iniciar rastreamento (após liberação) ──
+async function iniciarAcesso() {
+  const btn = document.querySelector('#screen-liberado .btn');
+  if (btn) { btn.innerHTML = 'Iniciando… <span class="loader"></span>'; btn.className = 'btn btn-disabled'; }
 
   if (!navigator.geolocation) {
     showError('error-msg', 'Seu navegador não suporta geolocalização.');
-    btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary'; return;
+    return;
   }
-
-  btn.innerHTML = 'Aguardando GPS… <span class="loader"></span>';
 
   navigator.geolocation.getCurrentPosition(async (pos) => {
     try {
-      const resp = await api('sessions', {
-        method: 'POST',
-        extraHeaders: { 'Prefer': 'return=representation' },
+      // Atualiza sessão com posição inicial e status active
+      sessionStart = new Date();
+      await api(`sessions?id=eq.${sessionId}`, {
+        method: 'PATCH',
         body: JSON.stringify({
-          token, status: 'active',
           latitude_start:  pos.coords.latitude,
-          longitude_start: pos.coords.longitude,
-          ...(window._phoneFromUrl ? { phone: window._phoneFromUrl } : {}),
-          ...(window._fencePolygon ? { fence_polygon: JSON.stringify(window._fencePolygon) } : {})
+          longitude_start: pos.coords.longitude
         })
       });
-      if (!resp.ok) { const e = await resp.json(); throw new Error(e.message||'Erro ao criar sessão'); }
-      const data = await resp.json();
-      sessionId    = data[0].id;
-      sessionStart = new Date();
 
       // Grava ponto inicial
       const initSpeed = pos.coords.speed != null ? Math.round(pos.coords.speed * 3.6) : 0;
@@ -992,62 +1087,139 @@ async function iniciarAcesso() {
       lastSentLng = pos.coords.longitude;
       pontos = 1;
 
-      // Ativa geofence (polígono carregado da URL)
-      geofenceAtivo = true;
-
       showScreen('screen-ativo');
       document.getElementById('ativo-inicio').textContent = `Iniciado às ${fmtHoraMin(sessionStart)}`;
       document.getElementById('stat-pts').textContent = pontos;
-      // Mostra raio configurado na timeline
-      // Fence pode ainda estar carregando — verifica após 1s
-      addTimeline('✓', 'Check-in realizado', fmtHora());
-      setTimeout(() => {
-        if (window._fencePolygon && window._fencePolygon.length >= 3) {
-          addTimeline('🔒', `Geofence ativo · ${window._fencePolygon.length} pontos`, fmtHora());
-        }
-      }, 1500);
+      geofenceAtivo = true;
+      addTimeline('✓', 'Acesso iniciado', fmtHora());
 
       await ativarWakeLock();
       iniciarWatchVelocidade();
       iniciarGravacao();
       iniciarTimer();
 
+      // Fence: informar se ativo
+      setTimeout(() => {
+        if (window._fencePolygon && window._fencePolygon.length >= 3) {
+          addTimeline('🔒', `Geofence ativo · ${window._fencePolygon.length} pts`, fmtHora());
+        }
+      }, 1500);
+
     } catch(e) {
       showError('error-msg', `Erro: ${e.message}`);
-      btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary';
+      if (btn) { btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary'; }
     }
   }, (err) => {
-    let msg = 'Não foi possível obter sua localização. ';
+    let msg = 'Não foi possível obter localização. ';
     if (err.code === 1) msg += 'Permissão negada.';
-    else if (err.code === 2) msg += 'GPS indisponível.';
     else msg += 'Verifique se o GPS está ativado.';
     showError('error-msg', msg);
-    btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary';
+    if (btn) { btn.innerHTML = 'Iniciar acesso'; btn.className = 'btn btn-primary'; }
   }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+}
+
+// ── Velocidade (janela deslizante) ──
+function calcSpeedWindow() {
+  if (posWindow.length < 2) return 0;
+  const first = posWindow[0], last = posWindow[posWindow.length-1];
+  const dt = (last.ts - first.ts) / 1000;
+  if (dt < 1) return 0;
+  let totalDist = 0;
+  for (let i = 1; i < posWindow.length; i++) {
+    totalDist += distMeters(posWindow[i-1].lat, posWindow[i-1].lng, posWindow[i].lat, posWindow[i].lng);
+  }
+  return (totalDist / dt) * 3.6;
+}
+
+function iniciarWatchVelocidade() {
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const now = Date.now();
+      const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      if (pos.coords.speed != null && pos.coords.speed >= 0) {
+        currentSpeed = Math.round(pos.coords.speed * 3.6);
+        posWindow.push({ lat, lng, ts: now });
+        if (posWindow.length > SPEED_WINDOW) posWindow.shift();
+        document.getElementById('stat-vel').textContent = currentSpeed;
+        return;
+      }
+      if (posWindow.length > 0) {
+        const prev = posWindow[posWindow.length-1];
+        if (distMeters(prev.lat, prev.lng, lat, lng) < MIN_DIST_M) {
+          posWindow = []; currentSpeed = 0;
+          document.getElementById('stat-vel').textContent = 0; return;
+        }
+      }
+      posWindow.push({ lat, lng, ts: now });
+      if (posWindow.length > SPEED_WINDOW) posWindow.shift();
+      currentSpeed = Math.round(Math.min(calcSpeedWindow(), 60));
+      document.getElementById('stat-vel').textContent = currentSpeed;
+    },
+    () => {},
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+}
+
+function iniciarGravacao() {
+  trackInterval = setInterval(() => {
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude, lng = pos.coords.longitude;
+        const now = Date.now();
+        if (geofenceAtivo && window._fencePolygon && window._fencePolygon.length >= 3) {
+          if (!pontoNoPolyCheckin(lat, lng, window._fencePolygon)) {
+            addTimeline('⚠', 'Saiu do perímetro', fmtHora());
+            showError('error-gps', '⚠ Você saiu do perímetro. Sessão encerrada automaticamente.');
+            await encerrarGeofence(); return;
+          }
+        }
+        if (now - _lastGravaTs < 10000) return;
+        if (lastSentLat !== null && distMeters(lastSentLat, lastSentLng, lat, lng) < 5) return;
+        try {
+          await api('locations', {
+            method: 'POST',
+            body: JSON.stringify({ session_id: sessionId, latitude: lat, longitude: lng, speed: currentSpeed, timestamp: new Date().toISOString() })
+          });
+          _lastGravaTs = now; lastSentLat = lat; lastSentLng = lng;
+          pontos++;
+          document.getElementById('stat-pts').textContent = pontos;
+          document.getElementById('stat-upd').textContent = fmtHora();
+          hideError('error-gps');
+          addTimeline('◎', `Ponto registrado · ${currentSpeed} km/h`, fmtHora());
+        } catch(e) { showError('error-gps', 'Falha ao enviar. Tentando…'); }
+      },
+      () => { showError('error-gps', 'GPS indisponível…'); },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 }
+    );
+  }, 5000);
+}
+
+function iniciarTimer() {
+  timerInterval = setInterval(() => {
+    if (!sessionStart) return;
+    const diff = Math.floor((Date.now() - sessionStart) / 1000);
+    const m = Math.floor(diff / 60).toString().padStart(2,'0');
+    const s = (diff % 60).toString().padStart(2,'0');
+    document.getElementById('stat-tempo').textContent = `${m}:${s}`;
+  }, 1000);
 }
 
 // ── Encerramento ──
 async function confirmarEncerramento() {
   if (!confirm('Confirma o encerramento da visita?')) return;
-  await encerrar();
+  await encerrar('manual');
 }
 
-// Encerramento automático por geofence — sem confirmação
 async function encerrarGeofence() {
   geofenceAtivo = false;
-  // Grava motivo do encerramento antes de encerrar
   if (sessionId) {
-    api(`sessions?id=eq.${sessionId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ ended_reason: 'geofence' })
-    }).catch(()=>{});
+    api(`sessions?id=eq.${sessionId}`, { method:'PATCH', body: JSON.stringify({ ended_reason:'geofence' }) }).catch(()=>{});
   }
   await encerrar('geofence');
 }
 
 async function encerrar(motivo='manual') {
-  clearInterval(timerInterval);
-  clearInterval(trackInterval);
+  clearInterval(timerInterval); clearInterval(trackInterval);
   if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
   desativarWakeLock();
   const fim = new Date();
@@ -1068,15 +1240,35 @@ async function encerrar(motivo='manual') {
   showScreen('screen-encerrado');
 }
 
+// ── Carrega fence do Supabase ──
+async function carregarFenceDoServidor() {
+  try {
+    const r = await api('config?key=eq.fence_polygon&select=value&limit=1');
+    const rows = await r.json();
+    if (Array.isArray(rows) && rows.length > 0) window._fencePolygon = JSON.parse(rows[0].value);
+  } catch(e) { console.warn('Fence não carregado:', e); }
+}
+
 // ── Boot ──
 window.onload = () => {
   const params = new URLSearchParams(window.location.search);
   token = params.get('token');
-  // Phone vem da URL (?phone=NUMERO) — gravado no banco junto com a sessão
   window._phoneFromUrl = params.get('phone') || null;
-  // Polígono de geofence — busca do Supabase (não vem mais na URL)
   window._fencePolygon = null;
   carregarFenceDoServidor();
+
+  // Pré-preencher nome se veio na URL
+  const nameFromUrl = params.get('name');
+  if (nameFromUrl) {
+    const input = document.getElementById('input-nome');
+    if (input) input.value = decodeURIComponent(nameFromUrl);
+  }
+  // Pré-preencher telefone se veio na URL
+  if (window._phoneFromUrl) {
+    const input = document.getElementById('input-telefone');
+    if (input) input.value = window._phoneFromUrl;
+  }
+
   if (!token) {
     token = 'DEMO-' + Math.random().toString(36).substr(2,6).toUpperCase();
     const url = new URL(window.location.href);

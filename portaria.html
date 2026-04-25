@@ -535,6 +535,14 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   .btn-copiar-msg { width:100%; margin-top:6px; padding:9px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:rgba(255,255,255,0.8); font-size:13px; font-weight:600; font-family:var(--sans); cursor:pointer; display:none; transition:background 0.15s; }
   .btn-copiar-msg:hover { background:rgba(255,255,255,0.14); }
   .btn-copiar-msg.show { display:block; }
+
+  /* ── Card aguardando liberação ── */
+  @keyframes blink-amber { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .pill-pending { background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid rgba(245,158,11,0.4); animation: blink-amber 1.2s ease-in-out infinite; }
+  .session-card.pending { border-color: rgba(245,158,11,0.35); }
+  .btn-liberar { background: #16a34a; color: #fff; border: none; border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: 700; font-family: var(--sans); cursor: pointer; white-space: nowrap; transition: filter 0.15s; flex-shrink: 0; }
+  .btn-liberar:hover { filter: brightness(1.1); }
+  .visitor-info { font-size: 10.5px; color: rgba(255,255,255,0.5); margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -853,7 +861,6 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
       <div class="detail-header">
         <span class="detail-token" id="detail-token">—</span>
         <div style="display:flex;gap:6px;align-items:center;">
-          <button class="detail-encerrar" id="btn-encerrar-sessao" onclick="encerrarSessaoAtiva()">Encerrar</button>
           <button class="detail-close" onclick="closeDetail()">Fechar</button>
         </div>
       </div>
@@ -1869,21 +1876,44 @@ function renderSessionList(ids, sessions, isActive) {
       const inits   = s.token.slice(0,2).toUpperCase();
       const active  = s.status==='active';
       const onclick = active?`selectSession('${s.id}','${s.token}')`:`handleHistoryClick('${s.id}')`;
-      return `<div class="session-card ${!active?'finished':''} ${selectedId===s.id?'selected':''}" id="card-${s.id}" onclick="${onclick}">
-        <div class="session-avatar ${active?'':'avatar-finished'}" style="${active?`background:${color}20;color:${color};border-radius:8px`:''}"> ${inits}</div>
-        <div class="session-info">
+      const pending = s.status === 'pending';
+      const pillClass = pending ? 'pill-pending' : (active ? 'pill-active' : 'pill-finished');
+      const pillDot   = active && !pending ? 'pill-dot-active' : 'pill-dot-finished';
+      const pillLabel = pending ? 'Aguard.' : (active ? 'Ativo' : 'Fim');
+      const cardClass = pending ? 'pending' : (!active ? 'finished' : '');
+      const visitorName = s.visitor_name || '';
+      const visitorDest = s.destination  || '';
+      return `<div class="session-card ${cardClass} ${selectedId===s.id?'selected':''}" id="card-${s.id}" onclick="${onclick}">
+        <div class="session-avatar ${active||pending?'':'avatar-finished'}" style="${active||pending?`background:${color}20;color:${color};border-radius:8px`:''}"> ${inits}</div>
+        <div class="session-info" style="min-width:0;flex:1;">
           <div class="session-token">${s.token}</div>
-          <div class="session-meta">${fmtTime(s.created_at)} · ${active?calcDuration(s.created_at,null):calcDuration(s.created_at,s.ended_at)}</div>
+          <div class="session-meta">${fmtTime(s.created_at)} · ${active&&!pending?calcDuration(s.created_at,null):''}</div>
+          ${visitorName ? `<div class="visitor-info">${visitorName}${visitorDest?' · '+visitorDest:''}</div>` : ''}
           ${(()=>{ const ph=phoneForToken(s.token,s.phone); return ph?`<div class="session-phone">${ph}</div>`:''; })()}
         </div>
-        <div class="pill ${active?'pill-active':'pill-finished'}">
-          <span class="pill-dot ${active?'pill-dot-active':'pill-dot-finished'}"></span>${active?'Ativo':'Fim'}
-        </div></div>`;
+        ${pending
+          ? `<button class="btn-liberar" onclick="event.stopPropagation();liberarAcesso('${s.id}',this)">Liberar</button>`
+          : `<div class="pill ${pillClass}"><span class="pill-dot ${pillDot}"></span>${pillLabel}</div>`
+        }</div>`;
     }).join('');
   });
 }
 
 function handleHistoryClick(id) { const s=sessionCache[id]; if(s) selectHistory(s); }
+
+async function liberarAcesso(id, btn) {
+  btn.textContent = '…'; btn.disabled = true;
+  try {
+    await api(`sessions?id=eq.${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'active' })
+    });
+    await loadSessions();
+  } catch(e) {
+    btn.textContent = 'Liberar'; btn.disabled = false;
+    console.error(e);
+  }
+}
 
 // ── Seletor de data ──
 function todayLocal() { return new Date().toLocaleDateString('pt-BR',{timeZone:TZ}).split('/').reverse().join('-'); }
@@ -1928,7 +1958,7 @@ async function loadSessions() {
   try {
     const today=new Date(); today.setHours(0,0,0,0);
     const [ra,rh] = await Promise.all([
-      api('sessions?status=eq.active&order=created_at.desc&select=*'),
+      api('sessions?status=in.(pending,active)&order=created_at.desc&select=*'),
       api(`sessions?status=eq.finished&created_at=gte.${today.toISOString()}&order=created_at.desc&select=*`)
     ]);
     const ativasArr = await ra.json().then(d=>Array.isArray(d)?d:[]);
@@ -1971,8 +2001,9 @@ function gerarLink() {
   const rand  = Math.random().toString(36).substr(2,5).toUpperCase();
   generatedToken = 'CON' + rand;
   const wppForLink = getInputVal('input-wpp','p-input-wpp','d-input-wpp').replace(/\D/g,'');
+  const nomeForLink = getInputVal('input-nome','p-input-nome','d-input-nome').trim();
   // Fence vem do Supabase no checkin — não precisa ir na URL
-  generatedLink  = `${CHECKIN_URL}?token=${generatedToken}` + (wppForLink ? `&phone=${wppForLink}` : '');
+  generatedLink  = `${CHECKIN_URL}?token=${generatedToken}` + (wppForLink ? `&phone=${wppForLink}` : '') + (nomeForLink ? `&name=${encodeURIComponent(nomeForLink)}` : '');
 
   // Limpa e mostra o novo link (evita concatenação de links anteriores)
   ['link-result','p-link-result','d-link-result'].forEach(id=>{
