@@ -2037,7 +2037,7 @@ function enviarWhatsApp() {
   const mensagem = 'Olá! Para acessar o condomínio, clique no link abaixo e siga as instruções:\n' + generatedLink;
   const texto = encodeURIComponent(mensagem);
   // 'whatsapp_portaria' como nome fixo reutiliza a mesma aba se já estiver aberta
-  window.open('https://wa.me/' + numero + '?text=' + texto, 'whatsapp_portaria');
+  window.open('https://web.whatsapp.com/send?phone=' + numero + '&text=' + texto, 'whatsapp_portaria');
 }
 
 // ── Modal apagar ──
