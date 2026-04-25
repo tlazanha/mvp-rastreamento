@@ -2041,6 +2041,16 @@ function gerarLink() {
     mapa[generatedToken] = wppNum;
     localStorage.setItem('token_phones', JSON.stringify(mapa));
   }
+
+  // Salva hint no Supabase para pré-preencher o checkin
+  if (wppNum || nomeForLink) {
+    const hintVal = JSON.stringify({ nome: nomeForLink || '', phone: wppNum || '' });
+    api('config', {
+      method: 'POST',
+      extraHeaders: { 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ key: `visitor_hint_${generatedToken}`, value: hintVal, updated_at: new Date().toISOString() })
+    }).catch(() => {});
+  }
 }
 
 // Retorna telefone formatado para um token (localStorage ou campo phone da sessão)

@@ -877,93 +877,104 @@ function addTimeline(icon, title, time) {
 });
 
 // ── Voz com LLM ──
-let mediaRecorder = null, audioChunks = [];
+// ── Voz: Web Speech API (transcrição local) + Claude (interpretação) ──
+let recognition = null;
+let recognizing = false;
 
-async function iniciarVoz() {
-  const btn = document.getElementById('btn-voice');
+function iniciarVoz() {
+  const btn   = document.getElementById('btn-voice');
   const label = document.getElementById('voice-btn-label');
   const hint  = document.getElementById('voice-hint');
 
-  // Se já está gravando, para
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
-    mediaRecorder.stop();
+  // Verifica suporte
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    hint.textContent = 'Reconhecimento de voz não disponível neste browser. Use Chrome ou Edge.';
     return;
   }
 
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    audioChunks = [];
-    mediaRecorder = new MediaRecorder(stream);
-
-    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-
-    mediaRecorder.onstop = async () => {
-      btn.classList.remove('recording');
-      label.textContent = 'Processando…';
-      btn.disabled = true;
-      hint.textContent = 'Aguarde, entendendo o que você disse…';
-      stream.getTracks().forEach(t => t.stop());
-
-      try {
-        // Converte áudio para base64
-        const blob = new Blob(audioChunks, { type: 'audio/webm' });
-        const base64 = await new Promise(res => {
-          const reader = new FileReader();
-          reader.onload = () => res(reader.result.split(',')[1]);
-          reader.readAsDataURL(blob);
-        });
-
-        // Envia para Claude via API
-        const resp = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 300,
-            messages: [{
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: 'Extraia do áudio: nome completo, telefone e destino (rua/bloco/apto). Responda SOMENTE com JSON: {"nome":"...","telefone":"...","destino":"..."}. Se não entender algum campo, deixe vazio.'
-                },
-                {
-                  type: 'document',
-                  source: { type: 'base64', media_type: 'audio/webm', data: base64 }
-                }
-              ]
-            }]
-          })
-        });
-
-        const data = await resp.json();
-        const text = data.content?.[0]?.text || '{}';
-        const clean = text.replace(/```json|```/g, '').trim();
-        const parsed = JSON.parse(clean);
-
-        if (parsed.nome)     document.getElementById('input-nome').value = parsed.nome;
-        if (parsed.telefone) document.getElementById('input-telefone').value = parsed.telefone;
-        if (parsed.destino)  document.getElementById('input-destino').value = parsed.destino;
-
-        hint.textContent = 'Verifique os dados e corrija se necessário';
-        toggleBtn(document.getElementById('termo-check')?.checked || false);
-      } catch(e) {
-        hint.textContent = 'Não consegui entender. Preencha manualmente.';
-        console.error(e);
-      }
-
-      label.textContent = 'Falar meus dados';
-      btn.disabled = false;
-    };
-
-    mediaRecorder.start();
-    btn.classList.add('recording');
-    label.textContent = 'Gravando… toque para parar';
-    hint.textContent = 'Fale: seu nome, telefone e onde vai';
-
-  } catch(e) {
-    hint.textContent = 'Microfone indisponível. Preencha manualmente.';
+  // Se já está gravando, para
+  if (recognizing) {
+    recognition.stop();
+    return;
   }
+
+  recognition = new SpeechRecognition();
+  recognition.lang = 'pt-BR';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  recognition.continuous = false;
+
+  recognition.onstart = () => {
+    recognizing = true;
+    btn.classList.add('recording');
+    label.textContent = 'Ouvindo… toque para parar';
+    hint.textContent = 'Fale: seu nome, telefone e onde vai';
+  };
+
+  recognition.onend = () => {
+    recognizing = false;
+    btn.classList.remove('recording');
+  };
+
+  recognition.onerror = (e) => {
+    recognizing = false;
+    btn.classList.remove('recording');
+    label.textContent = 'Falar meus dados';
+    if (e.error === 'not-allowed') {
+      hint.textContent = 'Permissão de microfone negada. Verifique as configurações.';
+    } else if (e.error === 'no-speech') {
+      hint.textContent = 'Nenhuma fala detectada. Tente novamente.';
+    } else {
+      hint.textContent = 'Erro no microfone. Preencha manualmente.';
+    }
+  };
+
+  recognition.onresult = async (e) => {
+    const texto = e.results[0][0].transcript;
+    label.textContent = 'Interpretando…';
+    btn.disabled = true;
+    hint.textContent = `Você disse: "${texto}"`;
+
+    try {
+      // Envia texto transcrito para Claude interpretar
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 200,
+          messages: [{
+            role: 'user',
+            content: `Extraia do texto abaixo: nome completo, telefone (só dígitos) e destino (rua/bloco/apto/número). Responda SOMENTE com JSON válido sem markdown: {"nome":"...","telefone":"...","destino":"..."}. Se um campo não estiver presente, deixe string vazia.
+
+Texto: "${texto}"`
+          }]
+        })
+      });
+
+      const data = await resp.json();
+      const raw  = data.content?.[0]?.text || '{}';
+      const clean = raw.replace(/\`\`\`json|\`\`\`/g, '').trim();
+      const parsed = JSON.parse(clean);
+
+      if (parsed.nome)     document.getElementById('input-nome').value = parsed.nome;
+      if (parsed.telefone) document.getElementById('input-telefone').value = parsed.telefone;
+      if (parsed.destino)  document.getElementById('input-destino').value = parsed.destino;
+
+      hint.textContent = 'Verifique e corrija se necessário';
+      toggleBtn(document.getElementById('termo-check')?.checked || false);
+
+    } catch(err) {
+      console.error('LLM error:', err);
+      hint.textContent = 'Não consegui interpretar. Preencha ou tente novamente.';
+    }
+
+    label.textContent = 'Falar meus dados';
+    btn.disabled = false;
+  };
+
+  recognition.start();
 }
 
 // ── Envio de identificação → cria sessão pending ──
@@ -1241,12 +1252,33 @@ async function encerrar(motivo='manual') {
 }
 
 // ── Carrega fence do Supabase ──
-async function carregarFenceDoServidor() {
+async function carregarDadosIniciais() {
+  // Busca fence e hint do visitante em paralelo
   try {
-    const r = await api('config?key=eq.fence_polygon&select=value&limit=1');
-    const rows = await r.json();
-    if (Array.isArray(rows) && rows.length > 0) window._fencePolygon = JSON.parse(rows[0].value);
-  } catch(e) { console.warn('Fence não carregado:', e); }
+    const [rf, rh] = await Promise.all([
+      api('config?key=eq.fence_polygon&select=value&limit=1'),
+      token ? api(`config?key=eq.visitor_hint_${token}&select=value&limit=1`) : Promise.resolve(null)
+    ]);
+
+    // Fence
+    const fence = await rf.json();
+    if (Array.isArray(fence) && fence.length > 0) {
+      window._fencePolygon = JSON.parse(fence[0].value);
+    }
+
+    // Hint do visitante (nome + telefone salvos pela portaria)
+    if (rh) {
+      const hint = await rh.json();
+      if (Array.isArray(hint) && hint.length > 0) {
+        const dados = JSON.parse(hint[0].value);
+        const nomeInput = document.getElementById('input-nome');
+        const telInput  = document.getElementById('input-telefone');
+        // Só pré-preenche se o campo ainda estiver vazio
+        if (nomeInput && !nomeInput.value && dados.nome)  nomeInput.value = dados.nome;
+        if (telInput  && !telInput.value  && dados.phone) telInput.value  = dados.phone;
+      }
+    }
+  } catch(e) { console.warn('Dados iniciais não carregados:', e); }
 }
 
 // ── Boot ──
@@ -1255,7 +1287,7 @@ window.onload = () => {
   token = params.get('token');
   window._phoneFromUrl = params.get('phone') || null;
   window._fencePolygon = null;
-  carregarFenceDoServidor();
+  carregarDadosIniciais();
 
   // Pré-preencher nome se veio na URL
   const nameFromUrl = params.get('name');
