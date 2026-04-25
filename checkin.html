@@ -946,23 +946,26 @@ function iniciarVoz() {
           max_tokens: 200,
           messages: [{
             role: 'user',
-            content: `Extraia do texto abaixo: nome completo, telefone (só dígitos) e destino (rua/bloco/apto/número). Responda SOMENTE com JSON válido sem markdown: {"nome":"...","telefone":"...","destino":"..."}. Se um campo não estiver presente, deixe string vazia.
-
-Texto: "${texto}"`
+            content: 'Extraia do texto: nome completo, telefone (só dígitos) e destino (onde vai: rua, número, bloco ou apto). Use EXATAMENTE estas chaves: {"nome":"...","telefone":"...","destino":"..."}. Sem markdown, sem explicação. Campos ausentes ficam string vazia. Texto: "' + texto + '"'
           }]
         })
       });
 
       const data = await resp.json();
       const raw  = data.content?.[0]?.text || '{}';
-      const clean = raw.replace(/\`\`\`json|\`\`\`/g, '').trim();
+      const clean = raw.replace(/```json|```/g, '').trim();
+      console.log('Claude respondeu:', raw); // debug — ver no DevTools
       const parsed = JSON.parse(clean);
 
       if (parsed.nome)     document.getElementById('input-nome').value = parsed.nome;
       if (parsed.telefone) document.getElementById('input-telefone').value = parsed.telefone;
-      if (parsed.destino)  document.getElementById('input-destino').value = parsed.destino;
+      // Aceita variações de chave que o Claude pode retornar
+      const dest = parsed.destino || parsed.destination || parsed.endereco || parsed.endereço || parsed.local || parsed.rua || '';
+      if (dest) document.getElementById('input-destino').value = dest;
 
-      hint.textContent = 'Verifique e corrija se necessário';
+      // Mostra o que foi interpretado na hint para o usuário confirmar
+      const resumo = [parsed.nome, dest].filter(Boolean).join(' · ');
+      hint.textContent = resumo ? `Entendido: ${resumo} — verifique e corrija se necessário` : 'Verifique e corrija se necessário';
       toggleBtn(document.getElementById('termo-check')?.checked || false);
 
     } catch(err) {
