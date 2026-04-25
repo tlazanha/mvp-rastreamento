@@ -1657,6 +1657,15 @@ function fitMapToActive() {
 function clearHistoryLayer() {
   if (historyLayer) { map.removeLayer(historyLayer); historyLayer = null; }
   document.getElementById('map-history-badge').classList.remove('show');
+  // Restaura fence atual ao sair do histórico
+  if (fencePolygon && fencePolygon.length >= 3 && !fenceLayer) {
+    exibirFenceNoMapa(fencePolygon);
+  }
+}
+
+function esconderFenceParaHistorico() {
+  // Esconde fence atual para não sobrepor com o fence da sessão histórica
+  if (fenceLayer) { map.removeLayer(fenceLayer); fenceLayer = null; }
 }
 
 // ── Seleção sessão ativa ──
@@ -1685,6 +1694,7 @@ let _historyCallId = 0;
 async function selectHistory(session) {
   const myCallId = ++_historyCallId;
   clearHistoryLayer();
+  esconderFenceParaHistorico(); // remove fence atual — será restaurado ao fechar
   selectedId = session.id;
   document.querySelectorAll('.session-card').forEach(c => c.classList.remove('selected'));
   document.getElementById(`card-${session.id}`)?.classList.add('selected');
