@@ -877,7 +877,94 @@ function addTimeline(icon, title, time) {
 });
 
 // ── Voz com LLM ──
-// ── Voz: Web Speech API (transcrição local) + Claude (interpretação) ──
+// ── Parsing de fala — extrai nome, telefone e destino do texto transcrito ──
+function parsearFala(texto) {
+  const t = texto.trim();
+
+  // ── Telefone ──
+  // Converte números por extenso para dígitos
+  const porExtenso = {
+    'zero':0,'um':1,'uma':1,'dois':2,'duas':2,'três':3,'tres':3,
+    'quatro':4,'cinco':5,'seis':6,'sete':7,'oito':8,'nove':9,
+    'dez':10,'onze':11,'doze':12,'treze':13,'catorze':14,'quatorze':14,
+    'quinze':15,'dezesseis':16,'dezessete':17,'dezoito':18,'dezenove':19,
+    'vinte':20,'trinta':30,'quarenta':40,'cinquenta':50,'sessenta':60,
+    'setenta':70,'oitenta':80,'noventa':90
+  };
+
+  // Normaliza: substitui extensos por dígitos agrupando sequências
+  let normalizado = t.toLowerCase();
+  // Substitui "e" entre números por nada (ex: "noventa e nove" → "noventa nove")
+  normalizado = normalizado.replace(/\b(e)\b/g, ' ');
+  const palavras = normalizado.split(/\s+/);
+  const digitos = [];
+  let i = 0;
+  while (i < palavras.length) {
+    const p = palavras[i];
+    if (porExtenso[p] !== undefined) {
+      let val = porExtenso[p];
+      // Checa se próxima palavra é complemento (ex: "vinte" + "dois" = 22)
+      if (i+1 < palavras.length && porExtenso[palavras[i+1]] !== undefined) {
+        const next = porExtenso[palavras[i+1]];
+        if (val >= 20 && next < 10) { val += next; i++; }
+        else if (val >= 10 && val < 20) { /* já completo */ }
+      }
+      digitos.push(String(val));
+    } else {
+      // Extrai sequência de dígitos da palavra (ex: "99755-1507")
+      const nums = p.replace(/\D/g,'');
+      if (nums) digitos.push(nums);
+      else digitos.push('_'); // separador de palavra
+    }
+    i++;
+  }
+
+  // Encontra sequência de 8-11 dígitos contíguos (telefone)
+  const digitosStr = digitos.join('');
+  const telMatch = digitosStr.match(/\d{8,11}/);
+  let telefone = telMatch ? telMatch[0] : '';
+  // Formata se 11 dígitos: (XX) 9XXXX-XXXX
+  if (telefone.length === 11) telefone = `(${telefone.slice(0,2)}) ${telefone.slice(2,7)}-${telefone.slice(7)}`;
+  else if (telefone.length === 10) telefone = `(${telefone.slice(0,2)}) ${telefone.slice(2,6)}-${telefone.slice(6)}`;
+
+  // ── Destino ──
+  // Tudo após palavras-chave de destino
+  const destinoKeys = /\b(vou|vô|na|no|para|pro|pra|rua|avenida|av\.?|alameda|travessa|bloco|apartamento|apto|ap\.?|casa|número|nº|número)\b/i;
+  const destinoMatch = t.match(new RegExp(destinoKeys.source + '(.+)', 'i'));
+  let destino = '';
+  if (destinoMatch) {
+    destino = destinoMatch[0]
+      .replace(/^(vou|vô|na|no|para|pro|pra)\s+/i, '')  // remove preposição inicial
+      .replace(/^(a|o|ao|à)\s+/i, '')                    // remove artigo inicial
+      .replace(/\s*(meu nome|me chamo|telefone|cel\.?|celular).*$/i, '').trim();
+  }
+
+  // ── Nome ──
+  // Remove o trecho do telefone e do destino para isolar o nome
+  let semTelefone = t;
+  // Remove números (dígitos e extensos agrupados)
+  semTelefone = semTelefone.replace(/\b\d[\d\s\-\(\)]+/g, ' ');
+  // Remove palavras-chave de identificação e o que vem depois do destino
+  const nomeKeywords = /\b(me chamo|meu nome é|meu nome|sou o|sou a|me apresento|olá|oi|bom dia|boa tarde|boa noite)\b/i;
+  let nomeCandidato = semTelefone.replace(nomeKeywords, '').trim();
+  // Remove tudo após keywords de destino/telefone
+  nomeCandidato = nomeCandidato.replace(/\s*(vou|vô|na|no|para|pro|pra|telefone|cel|celular|fone|whatsapp|meu número).*$/i, '').trim();
+  // Capitaliza nome
+  let nome = nomeCandidato
+    .split(' ')
+    .filter(p => p.length > 1)
+    .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join(' ')
+    .trim();
+
+  // Limite razoável para nome (máx 5 palavras)
+  const nomeParts = nome.split(' ');
+  if (nomeParts.length > 5) nome = nomeParts.slice(0,5).join(' ');
+
+  return { nome, telefone, destino };
+}
+
+// ── Voz: Web Speech API ──
 let recognition = null;
 let recognizing = false;
 
@@ -937,35 +1024,19 @@ function iniciarVoz() {
     hint.textContent = `Você disse: "${texto}"`;
 
     try {
-      // Envia texto transcrito para Claude interpretar
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 200,
-          messages: [{
-            role: 'user',
-            content: 'Extraia do texto: nome completo, telefone (só dígitos) e destino (onde vai: rua, número, bloco ou apto). Use EXATAMENTE estas chaves: {"nome":"...","telefone":"...","destino":"..."}. Sem markdown, sem explicação. Campos ausentes ficam string vazia. Texto: "' + texto + '"'
-          }]
-        })
-      });
+      // ── Parsing local — sem API, funciona offline ──
+      hint.textContent = `Você disse: "${texto}"`;
 
-      const data = await resp.json();
-      const raw  = data.content?.[0]?.text || '{}';
-      const clean = raw.replace(/```json|```/g, '').trim();
-      console.log('Claude respondeu:', raw); // debug — ver no DevTools
-      const parsed = JSON.parse(clean);
+      const parsed = parsearFala(texto);
 
       if (parsed.nome)     document.getElementById('input-nome').value = parsed.nome;
       if (parsed.telefone) document.getElementById('input-telefone').value = parsed.telefone;
-      // Aceita variações de chave que o Claude pode retornar
-      const dest = parsed.destino || parsed.destination || parsed.endereco || parsed.endereço || parsed.local || parsed.rua || '';
-      if (dest) document.getElementById('input-destino').value = dest;
+      if (parsed.destino)  document.getElementById('input-destino').value = parsed.destino;
 
-      // Mostra o que foi interpretado na hint para o usuário confirmar
-      const resumo = [parsed.nome, dest].filter(Boolean).join(' · ');
-      hint.textContent = resumo ? `Entendido: ${resumo} — verifique e corrija se necessário` : 'Verifique e corrija se necessário';
+      const resumo = [parsed.nome, parsed.destino].filter(Boolean).join(' · ');
+      hint.textContent = resumo
+        ? `Entendido: ${resumo} — verifique e corrija se necessário`
+        : `Você disse: "${texto}" — preencha os campos manualmente`;
       toggleBtn(document.getElementById('termo-check')?.checked || false);
 
     } catch(err) {
@@ -1037,8 +1108,7 @@ async function enviarIdentificacao() {
     document.getElementById('wait-tel').textContent  = tel;
     document.getElementById('wait-dest').textContent = dest;
 
-    showScreen('screen-aguardando');
-    iniciarPolling();
+    showScreen('screen-liberado');
 
   } catch(e) {
     showError('error-msg', `Erro: ${e.message}`);
