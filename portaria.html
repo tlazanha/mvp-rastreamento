@@ -2028,6 +2028,8 @@ async function copiarLink() {
   } catch { prompt('Copie o link:',generatedLink); }
 }
 
+let _waWindow = null; // referência da janela do WhatsApp
+
 function enviarWhatsApp() {
   const wpp = getInputVal('input-wpp','p-input-wpp','d-input-wpp')
     .replace(/\D/g,''); // só dígitos
@@ -2036,8 +2038,16 @@ function enviarWhatsApp() {
   // Monta mensagem com o link atual (generatedLink é sempre o último gerado)
   const mensagem = 'Olá! Para acessar o condomínio, clique no link abaixo e siga as instruções:\n' + generatedLink;
   const texto = encodeURIComponent(mensagem);
-  // 'whatsapp_portaria' como nome fixo reutiliza a mesma aba se já estiver aberta
-  window.open('https://web.whatsapp.com/send?phone=' + numero + '&text=' + texto, 'whatsapp_portaria');
+  const url = 'https://web.whatsapp.com/send?phone=' + numero + '&text=' + texto;
+
+  // Se a janela já existe e não foi fechada, navega nela
+  if (_waWindow && !_waWindow.closed) {
+    _waWindow.location.href = url;
+    _waWindow.focus();
+  } else {
+    // Abre nova janela e guarda a referência
+    _waWindow = window.open(url, 'whatsapp_portaria');
+  }
 }
 
 // ── Modal apagar ──
