@@ -583,6 +583,23 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   .view-toggle-btn { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 4px 8px; cursor: pointer; color: rgba(255,255,255,0.4); transition: all 0.15s; }
   .view-toggle-btn.active { background: rgba(108,79,204,0.25); border-color: rgba(108,79,204,0.5); color: #fff; }
   .view-toggle-btn svg { width: 13px; height: 13px; display: block; }
+
+  /* Badge de status no topo do card em grade */
+  .cards-grid .session-card { flex-direction: column; align-items: flex-start; padding: 10px 10px 8px; position: relative; }
+  .cards-grid .card-status-bar { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 8px 8px 0 0; }
+  .cards-grid .card-status-bar.bar-active  { background: var(--green); }
+  .cards-grid .card-status-bar.bar-pending { background: #f59e0b; }
+  .cards-grid .card-status-bar.bar-fin     { background: rgba(255,255,255,0.15); }
+  .cards-grid .card-top { display: flex; align-items: center; gap: 6px; width: 100%; margin-bottom: 4px; }
+  .cards-grid .session-avatar { width: 24px; height: 24px; font-size: 9px; flex-shrink: 0; }
+  .cards-grid .session-token  { font-size: 11px; font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cards-grid .session-info   { width: 100%; min-width: 0; }
+  .cards-grid .session-meta   { font-size: 10px; margin-top: 0; }
+  .cards-grid .visitor-info   { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cards-grid .session-phone  { font-size: 9.5px; }
+  /* Ocultar pill em grade — status já está na barra de cor */
+  .cards-grid .pill           { display: none; }
+  .cards-grid .btn-liberar    { margin-top: 6px; width: 100%; text-align: center; font-size: 10px; padding: 4px; }
 </style>
 </head>
 <body>
@@ -609,11 +626,14 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   </div>
 </div>
 
-<!-- ── Tab bar (portrait only) ── -->
 <div class="tab-bar">
   <button class="tab-bar-btn active" onclick="switchTab('mapa')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
     <span>Mapa</span>
+  </button>
+  <button class="tab-bar-btn" onclick="switchTab('link')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+    <span>Link</span>
   </button>
   <button class="tab-bar-btn" onclick="switchTab('ativos')" style="position:relative">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -623,10 +643,6 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   <button class="tab-bar-btn" onclick="switchTab('historico')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     <span>Histórico</span>
-  </button>
-  <button class="tab-bar-btn" onclick="switchTab('link')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-    <span>Link</span>
   </button>
   <button class="tab-bar-btn" onclick="switchTab('relatorio')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -642,18 +658,39 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 <div class="tab-panel active" id="panel-mapa">
   <!-- main do mapa vai aqui via JS no portrait -->
 </div>
-<div class="tab-panel" id="panel-ativos">
-  <div class="sessions-label" style="margin-top:4px;">Prestadores ativos <span class="tab-count" id="p-badge-ativas" style="display:none">0</span></div>
-  <div id="p-list-ativas"><div class="empty-sidebar">Carregando…</div></div>
+<div class="tab-panel" id="panel-ativos" style="background:var(--navy);overflow-y:auto;">
+  <div class="monitor-toolbar" style="padding:10px 12px 8px;">
+    <span class="monitor-toolbar-label">Ativos <span class="tab-count" id="p-badge-ativas" style="display:none;margin-left:4px;">0</span></span>
+    <div class="view-toggle">
+      <button class="view-toggle-btn active" id="pvt-grid-ativas" onclick="setView('ativas','grid',this)" title="Grade">
+        <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      </button>
+      <button class="view-toggle-btn" id="pvt-list-ativas" onclick="setView('ativas','list',this)" title="Lista">
+        <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="2" rx="1"/><rect x="1" y="7" width="14" height="2" rx="1"/><rect x="1" y="12" width="14" height="2" rx="1"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="p-list-ativas"><div class="cards-grid"><div class="empty-sidebar" style="grid-column:1/-1">Carregando…</div></div></div>
 </div>
-<div class="tab-panel" id="panel-historico">
-  <div class="hist-date-row" style="margin-top:4px;">
-    <span class="hist-date-label">Histórico</span>
+<div class="tab-panel" id="panel-historico" style="background:var(--navy);overflow-y:auto;">
+  <div class="hist-date-row" style="margin-top:4px;padding:10px 12px 0;">
+    <span class="hist-date-label">Data</span>
     <input type="date" class="hist-date-input" id="hist-date-p" onchange="onDateChange(this.value)">
     <button class="hist-date-today" onclick="setToday()">Hoje</button>
   </div>
-  <div id="p-list-historico"><div class="empty-sidebar">Carregando…</div></div>
-  <button class="btn-apagar-hist" id="p-btn-apagar-hist" onclick="showDeleteModal()" style="display:none">Apagar histórico do dia</button>
+  <div class="monitor-toolbar" style="padding:8px 12px;">
+    <span class="monitor-toolbar-label">Registros</span>
+    <div class="view-toggle">
+      <button class="view-toggle-btn active" id="pvt-grid-hist" onclick="setView('hist','grid',this)" title="Grade">
+        <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      </button>
+      <button class="view-toggle-btn" id="pvt-list-hist" onclick="setView('hist','list',this)" title="Lista">
+        <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="2" rx="1"/><rect x="1" y="7" width="14" height="2" rx="1"/><rect x="1" y="12" width="14" height="2" rx="1"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="p-list-historico"><div class="cards-grid"><div class="empty-sidebar" style="grid-column:1/-1">Carregando…</div></div></div>
+  <button class="btn-apagar-hist" id="p-btn-apagar-hist" onclick="showDeleteModal()" style="display:none;margin:0 12px 16px;">Apagar histórico do dia</button>
 </div>
 <div class="tab-panel" id="panel-relatorio" style="background:var(--navy);overflow-y:auto;">
 
@@ -744,7 +781,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
       <button class="sidebar-tab-btn" id="stab-monitorar" onclick="switchSidebarTab('monitorar')" style="position:relative;">
         Monitorar <span class="tab-count" id="badge-mon" style="display:none;margin-left:4px;font-size:9px;">0</span>
       </button>
-      <button class="sidebar-tab-btn" id="stab-relatorio" onclick="switchSidebarTab('relatorio')">Relat.</button>
+      <button class="sidebar-tab-btn" id="stab-relatorio" onclick="switchSidebarTab('relatorio')">Relatórios</button>
       <button class="sidebar-tab-btn" id="stab-config" onclick="switchSidebarTab('config')">Config</button>
     </div>
 
@@ -973,6 +1010,10 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
     <span>Mapa</span>
   </button>
+  <button class="bottom-nav-btn" onclick="openDrawer('link')" id="bnav-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+    <span>Link</span>
+  </button>
   <button class="bottom-nav-btn" onclick="openDrawer('ativos')" id="bnav-ativos" style="position:relative">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
     <span>Ativos</span>
@@ -981,10 +1022,6 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   <button class="bottom-nav-btn" onclick="openDrawer('historico')" id="bnav-historico">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     <span>Histórico</span>
-  </button>
-  <button class="bottom-nav-btn" onclick="openDrawer('link')" id="bnav-link">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-    <span>Link</span>
   </button>
   <button class="bottom-nav-btn" onclick="openDrawer('relatorio')" id="bnav-relatorio">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -1138,17 +1175,19 @@ let _lastAtivas = [], _lastHistorico = [];
 function setView(section, mode) {
   viewState[section] = mode;
   const isAtivas = section === 'ativas';
-  // Atualiza botões
-  ['grid','list'].forEach(m => {
-    document.getElementById((isAtivas ? 'vt-' : 'vt-') + m + '-' + (isAtivas ? 'ativas' : 'hist'))
-      ?.classList.toggle('active', m === mode);
+  const suffix = isAtivas ? 'ativas' : 'hist';
+  // Atualiza botões em todos os contextos (desktop + mobile)
+  ['vt-grid-','vt-list-','pvt-grid-','pvt-list-','dvt-grid-','dvt-list-'].forEach(pre => {
+    const id = pre + suffix;
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('active', pre.includes(mode === 'grid' ? 'grid' : 'list'));
   });
-  // Re-renderiza com cache existente (não perde dados)
-  if (isAtivas && _lastAtivas.length >= 0) {
-    renderSessionList(['list-ativas'], _lastAtivas, true);
-  } else if (!isAtivas && _lastHistorico.length >= 0) {
-    renderSessionList(['list-historico'], _lastHistorico, false);
-  }
+  // Re-renderiza com cache (não perde dados)
+  const lists = isAtivas
+    ? ['list-ativas', 'p-list-ativas', 'd-list-ativas']
+    : ['list-historico', 'p-list-historico', 'd-list-historico'];
+  const data = isAtivas ? _lastAtivas : _lastHistorico;
+  if (data.length >= 0) renderSessionList(lists, data, isAtivas);
 }
 
 function switchSidebarTab(tab) {
@@ -1691,7 +1730,7 @@ let currentTab = 'mapa';
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab-bar-btn').forEach((b,i) => {
-    const tabs = ['mapa','ativos','historico','link','relatorio','config'];
+    const tabs = ['mapa','link','ativos','historico','relatorio','config'];
     b.classList.toggle('active', tabs[i] === tab);
   });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -1713,8 +1752,8 @@ function openDrawer(name) {
   document.getElementById('drawer-overlay')?.classList.add('show');
   if (name === 'relatorio') { const d = iniciarRelatorio(); carregarRelatorio(d.from, d.to); }
   document.querySelectorAll('.bottom-nav-btn').forEach((b,i) => {
-    const names = ['mapa','ativos','historico','link'];
-    b.classList.toggle('active', names[i] === name || (name !== 'mapa' && names[i] === name));
+    const names = ['mapa','link','ativos','historico','relatorio','config'];
+    b.classList.toggle('active', names[i] === name);
   });
 }
 function closeDrawer() {
@@ -1990,7 +2029,8 @@ function renderSessionList(ids, sessions, isActive) {
     // Aplica classe de grade conforme viewState
     const section = isActive ? 'ativas' : 'hist';
     const isGrid = viewState[section] === 'grid';
-    if (containerId === 'list-ativas' || containerId === 'list-historico') {
+    const gridContainers = ['list-ativas','list-historico','p-list-ativas','p-list-historico','d-list-ativas','d-list-historico'];
+    if (gridContainers.includes(containerId)) {
       el.className = isGrid ? 'cards-grid' : '';
     }
     if (!sessions.length) {
@@ -2019,18 +2059,22 @@ function renderSessionList(ids, sessions, isActive) {
       const cardClass = pending ? 'pending' : (!active ? 'finished' : '');
       const visitorName = s.visitor_name || '';
       const visitorDest = s.destination  || '';
+      const barClass = pending ? 'bar-pending' : (active ? 'bar-active' : 'bar-fin');
+      const ph = (()=>{ const p=phoneForToken(s.token,s.phone); return p?`<div class="session-phone">${p}</div>`:''; })();
       return `<div class="session-card ${cardClass} ${selectedId===s.id?'selected':''}" id="card-${s.id}" onclick="${onclick}">
-        <div class="session-avatar ${active||pending?'':'avatar-finished'}" style="${active||pending?`background:${color}20;color:${color};border-radius:8px`:''}"> ${inits}</div>
-        <div class="session-info" style="min-width:0;flex:1;">
+        <div class="card-status-bar ${barClass}"></div>
+        <div class="card-top">
+          <div class="session-avatar ${active||pending?'':'avatar-finished'}" style="${active||pending?`background:${color}20;color:${color};border-radius:8px`:''}">${inits}</div>
           <div class="session-token">${s.token}</div>
-          <div class="session-meta">${fmtTime(s.created_at)} · ${active&&!pending?calcDuration(s.created_at,null):''}</div>
-          ${visitorName ? `<div class="visitor-info">${visitorName}${visitorDest?' · '+visitorDest:''}</div>` : ''}
-          ${(()=>{ const ph=phoneForToken(s.token,s.phone); return ph?`<div class="session-phone">${ph}</div>`:''; })()}
+          ${!pending ? `<div class="pill ${pillClass}" style="flex-shrink:0"><span class="pill-dot ${pillDot}"></span>${active?'Ativo':''}</div>` : ''}
         </div>
-        ${pending
-          ? `<button class="btn-liberar" onclick="event.stopPropagation();liberarAcesso('${s.id}',this)">Liberar</button>`
-          : `<div class="pill ${pillClass}"><span class="pill-dot ${pillDot}"></span>${pillLabel}</div>`
-        }</div>`;
+        <div class="session-info" style="min-width:0;width:100%;">
+          <div class="session-meta">${fmtTime(s.created_at)}${active&&!pending?' · '+calcDuration(s.created_at,null):''}</div>
+          ${visitorName ? `<div class="visitor-info">${visitorName}${visitorDest?' · '+visitorDest:''}</div>` : ''}
+          ${ph}
+        </div>
+        ${pending ? `<button class="btn-liberar" onclick="event.stopPropagation();liberarAcesso('${s.id}',this)">Liberar</button>` : ''}
+      </div>`;
     }).join('');
   });
 }
