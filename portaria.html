@@ -543,6 +543,46 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   .btn-liberar { background: #16a34a; color: #fff; border: none; border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: 700; font-family: var(--sans); cursor: pointer; white-space: nowrap; transition: filter 0.15s; flex-shrink: 0; }
   .btn-liberar:hover { filter: brightness(1.1); }
   .visitor-info { font-size: 10.5px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+
+  /* ── Sub-abas do Painel ── */
+  .sub-tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.07); flex-shrink: 0; }
+  .sub-tab-btn {
+    flex: 1; padding: 9px 0; background: none; border: none; cursor: pointer;
+    font-family: var(--sans); font-size: 11px; font-weight: 600;
+    color: rgba(255,255,255,0.40); letter-spacing: 0.06em; text-transform: uppercase;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .sub-tab-btn.active { color: #fff; border-bottom-color: var(--green); }
+  .sub-tab-btn:hover:not(.active) { color: rgba(255,255,255,0.65); }
+  .sub-tab-count { background: var(--green); color: #fff; font-size: 9px; font-weight: 700;
+    padding: 1px 5px; border-radius: 8px; min-width: 14px; text-align: center; }
+
+  .sub-panel { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
+  .sub-panel.active { display: flex; }
+
+  /* ── Drag handle na borda direita da sidebar ── */
+  .sidebar-drag-handle {
+    position: absolute; top: 0; right: -4px; width: 8px; height: 100%;
+    cursor: col-resize; z-index: 200;
+    transition: background 0.15s;
+  }
+  .sidebar-drag-handle:hover, .sidebar-drag-handle.dragging {
+    background: rgba(108,79,204,0.35);
+  }
+  .sidebar-drag-handle::after {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    width: 3px; height: 40px; border-radius: 2px;
+    background: rgba(255,255,255,0.15);
+    transition: background 0.15s;
+  }
+  .sidebar-drag-handle:hover::after { background: rgba(108,79,204,0.7); }
+
+  /* Sidebar com largura variável */
+  .sidebar { position: relative; }
+  .layout { transition: grid-template-columns 0.05s; }
 </style>
 </head>
 <body>
@@ -707,6 +747,10 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 
     <!-- ── Painel ── -->
     <div class="sidebar-panel active" id="spanel-painel">
+      <!-- Drag handle -->
+      <div class="sidebar-drag-handle" id="sidebar-drag"></div>
+
+      <!-- Métricas -->
       <div class="sidebar-metrics">
         <div class="metric-row">
           <div class="metric-block">
@@ -720,6 +764,8 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
         </div>
       </div>
       <div class="sidebar-divider"></div>
+
+      <!-- Gerar link -->
       <div class="link-section">
         <div class="link-section-label">Gerar link de acesso</div>
         <label class="field-label">Nome ou serviço</label>
@@ -734,21 +780,39 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.133 1.535 5.879L.057 23.487a.5.5 0 00.609.61l5.76-1.51A11.955 11.955 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.7-.51-5.26-1.44l-.38-.22-3.92 1.03 1.04-3.81-.24-.38A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
           Enviar por WhatsApp
         </button>
-      <div class="wa-hint" id="wa-hint"><strong>Dica:</strong> Não feche a aba do WhatsApp — o próximo envio vai reutilizá-la automaticamente.</div>
-      <button class="btn-copiar-msg" id="btn-copiar-msg-d" onclick="copiarMensagem()">📋 Copiar mensagem</button>
+        <div class="wa-hint" id="wa-hint"><strong>Dica:</strong> Não feche a aba do WhatsApp — o próximo envio vai reutilizá-la automaticamente.</div>
+        <button class="btn-copiar-msg" id="btn-copiar-msg-d" onclick="copiarMensagem()">📋 Copiar mensagem</button>
       </div>
       <div class="sidebar-divider"></div>
-      <div class="sessions-section">
-        <div class="sessions-label">Prestadores ativos <span class="tab-count" id="badge-ativas" style="display:none">0</span></div>
-        <div id="list-ativas"><div class="empty-sidebar">Carregando…</div></div>
-        <div class="hist-date-row">
-          <span class="hist-date-label">Histórico</span>
+
+      <!-- Sub-abas: Ativos | Histórico -->
+      <div class="sub-tabs">
+        <button class="sub-tab-btn active" id="stab-ativos" onclick="switchSubTab('ativos')">
+          Ativos <span class="sub-tab-count" id="sub-badge-ativos" style="display:none">0</span>
+        </button>
+        <button class="sub-tab-btn" id="stab-historico" onclick="switchSubTab('historico')">
+          Histórico
+        </button>
+      </div>
+
+      <!-- Sub-painel: Ativos -->
+      <div class="sub-panel active sessions-section" id="sub-ativos">
+        <div id="list-ativas" style="padding:0 0 16px;"><div class="empty-sidebar">Carregando…</div></div>
+      </div>
+
+      <!-- Sub-painel: Histórico -->
+      <div class="sub-panel sessions-section" id="sub-historico">
+        <div class="hist-date-row" style="padding:12px 24px 0; margin:0;">
+          <span class="hist-date-label">Data</span>
           <input type="date" class="hist-date-input" id="hist-date" onchange="onDateChange(this.value)">
           <button class="hist-date-today" onclick="setToday()">Hoje</button>
         </div>
-        <div id="list-historico"><div class="empty-sidebar">Carregando…</div></div>
-        <button class="btn-apagar-hist" id="btn-apagar-hist" onclick="showDeleteModal()">Apagar histórico do dia</button>
+        <div id="list-historico" style="padding:0 0 8px;"><div class="empty-sidebar">Carregando…</div></div>
+        <div style="padding:0 24px 16px;">
+          <button class="btn-apagar-hist" id="btn-apagar-hist" onclick="showDeleteModal()">Apagar histórico do dia</button>
+        </div>
       </div>
+
       <div class="sidebar-footer"><span class="footer-dot"></span>Atualização a cada 5s</div>
     </div>
 
@@ -1048,6 +1112,47 @@ function switchSidebarTab(tab) {
   if (layout) layout.classList.toggle('relatorio-mode', tab === 'relatorio');
   if (tab === 'relatorio') { const d = iniciarRelatorio(); carregarRelatorio(d.from, d.to); }
 }
+
+// ── Sub-abas do Painel (Ativos / Histórico) ──
+function switchSubTab(tab) {
+  ['ativos','historico'].forEach(t => {
+    document.getElementById(`stab-${t}`)?.classList.toggle('active', t === tab);
+    document.getElementById(`sub-${t}`)?.classList.toggle('active', t === tab);
+  });
+}
+
+// ── Drag resize da sidebar ──
+(function() {
+  const handle = document.getElementById('sidebar-drag');
+  if (!handle) return;
+  const layout  = document.querySelector('.layout');
+  const sidebar = document.querySelector('.sidebar');
+  let dragging  = false, startX, startW;
+  const MIN_W = 280;
+  const getMaxW = () => Math.floor(window.innerWidth * 0.70);
+
+  handle.addEventListener('mousedown', e => {
+    dragging = true; startX = e.clientX; startW = sidebar.offsetWidth;
+    handle.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const newW = Math.min(getMaxW(), Math.max(MIN_W, startW + e.clientX - startX));
+    layout.style.gridTemplateColumns = newW + 'px 1fr';
+    map && map.invalidateSize();
+  });
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    map && map.invalidateSize();
+  });
+})();
 
 // ── Relatórios ──
 let relSessions  = [];   // todas as sessões carregadas
@@ -1842,6 +1947,9 @@ function renderSidebar(ativas, historico) {
   const cntA = ativas.length;
   ['badge-ativas','p-badge-ativas'].forEach(id => { const el=document.getElementById(id); if(el){el.textContent=cntA;el.style.display=cntA>0?'inline':'none';} });
   ['bn-badge-ativas','tb-badge-ativas'].forEach(id => { const el=document.getElementById(id); if(el){el.textContent=cntA;el.classList.toggle('show',cntA>0);} });
+  // Badge da sub-aba
+  const subBadge = document.getElementById('sub-badge-ativos');
+  if (subBadge) { subBadge.textContent=cntA; subBadge.style.display=cntA>0?'inline':'none'; }
 
   // Ativos
   renderSessionList(['list-ativas','d-list-ativas','p-list-ativas'], ativas, true);
