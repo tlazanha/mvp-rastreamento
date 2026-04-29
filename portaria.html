@@ -2125,6 +2125,7 @@ async function loadHistorico() {
   const [start,end] = dateRangeUTC(val);
   const rh = await api(`sessions?status=eq.finished&created_at=gte.${start}&created_at=lte.${end}&order=created_at.desc&select=*`);
   const histArr = await rh.json().then(d=>Array.isArray(d)?d:[]);
+  _lastHistorico = histArr; // atualiza cache para setView funcionar corretamente
   renderSessionList(['list-historico','d-list-historico','p-list-historico'], histArr, false);
   const show = histArr.length > 0;
   ['btn-apagar-hist','d-btn-apagar-hist','p-btn-apagar-hist'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display=show?'block':'none'; });
@@ -2139,7 +2140,7 @@ async function loadSessions() {
     const today=new Date(); today.setHours(0,0,0,0);
     const [ra,rh] = await Promise.all([
       api('sessions?status=in.(pending,active)&order=created_at.desc&select=*'),
-      api(`sessions?status=eq.finished&created_at=gte.${today.toISOString()}&order=created_at.desc&select=*`)
+      api(`sessions?status=eq.finished&created_at=gte.${dateRangeUTC(getActiveDate())[0]}&created_at=lte.${dateRangeUTC(getActiveDate())[1]}&order=created_at.desc&select=*`)
     ]);
     const ativasArr = await ra.json().then(d=>Array.isArray(d)?d:[]);
     const histArr   = await rh.json().then(d=>Array.isArray(d)?d:[]);
