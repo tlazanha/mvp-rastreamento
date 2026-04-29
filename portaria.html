@@ -583,6 +583,27 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
   /* Sidebar com largura variável */
   .sidebar { position: relative; }
   .layout { transition: grid-template-columns 0.05s; }
+
+  /* ── Cards em grade 2 colunas na aba Monitorar ── */
+  .cards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 10px 12px; }
+  .cards-grid .session-card { margin: 0; }
+  /* Card compacto para grade */
+  .cards-grid .session-card { padding: 10px 10px; gap: 6px; }
+  .cards-grid .session-avatar { width: 28px; height: 28px; font-size: 10px; }
+  .cards-grid .session-token { font-size: 11px; }
+  .cards-grid .session-meta  { font-size: 10px; }
+  .cards-grid .session-phone { font-size: 9.5px; }
+  .cards-grid .visitor-info  { font-size: 9.5px; }
+  .cards-grid .pill { font-size: 9px; padding: 2px 6px; }
+  .cards-grid .btn-liberar { font-size: 10px; padding: 4px 8px; }
+
+  /* Toggle grade/lista */
+  .monitor-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid rgba(255,255,255,0.07); flex-shrink: 0; }
+  .monitor-toolbar-label { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.50); letter-spacing: 0.08em; text-transform: uppercase; }
+  .view-toggle { display: flex; gap: 4px; }
+  .view-toggle-btn { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 4px 8px; cursor: pointer; color: rgba(255,255,255,0.4); transition: all 0.15s; }
+  .view-toggle-btn.active { background: rgba(108,79,204,0.25); border-color: rgba(108,79,204,0.5); color: #fff; }
+  .view-toggle-btn svg { width: 13px; height: 13px; display: block; }
 </style>
 </head>
 <body>
@@ -741,7 +762,10 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
     <!-- Abas -->
     <div class="sidebar-tabs">
       <button class="sidebar-tab-btn active" id="stab-painel" onclick="switchSidebarTab('painel')">Painel</button>
-      <button class="sidebar-tab-btn" id="stab-relatorio" onclick="switchSidebarTab('relatorio')">Relatórios</button>
+      <button class="sidebar-tab-btn" id="stab-monitorar" onclick="switchSidebarTab('monitorar')" style="position:relative;">
+        Monitorar <span class="tab-count" id="badge-mon" style="display:none;margin-left:4px;font-size:9px;">0</span>
+      </button>
+      <button class="sidebar-tab-btn" id="stab-relatorio" onclick="switchSidebarTab('relatorio')">Relat.</button>
       <button class="sidebar-tab-btn" id="stab-config" onclick="switchSidebarTab('config')">Config</button>
     </div>
 
@@ -783,7 +807,12 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
         <div class="wa-hint" id="wa-hint"><strong>Dica:</strong> Não feche a aba do WhatsApp — o próximo envio vai reutilizá-la automaticamente.</div>
         <button class="btn-copiar-msg" id="btn-copiar-msg-d" onclick="copiarMensagem()">📋 Copiar mensagem</button>
       </div>
-      <div class="sidebar-divider"></div>
+      <div class="sidebar-footer"><span class="footer-dot"></span>Atualização a cada 5s</div>
+    </div>
+
+    <!-- ── Monitorar ── -->
+    <div class="sidebar-panel" id="spanel-monitorar" style="flex-direction:column;">
+      <div class="sidebar-drag-handle" id="sidebar-drag-mon"></div>
 
       <!-- Sub-abas: Ativos | Histórico -->
       <div class="sub-tabs">
@@ -796,20 +825,44 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
       </div>
 
       <!-- Sub-painel: Ativos -->
-      <div class="sub-panel active sessions-section" id="sub-ativos">
-        <div id="list-ativas" style="padding:0 0 16px;"><div class="empty-sidebar">Carregando…</div></div>
+      <div class="sub-panel active" id="sub-ativos" style="flex-direction:column;overflow:hidden;min-height:0;">
+        <div class="monitor-toolbar">
+          <span class="monitor-toolbar-label">Prestadores ativos <span class="tab-count" id="badge-ativas" style="display:none;margin-left:6px;">0</span></span>
+          <div class="view-toggle">
+            <button class="view-toggle-btn active" id="vt-grid-ativas" onclick="setView('ativas','grid',this)" title="Grade">
+              <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+            </button>
+            <button class="view-toggle-btn" id="vt-list-ativas" onclick="setView('ativas','list',this)" title="Lista">
+              <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="2" rx="1"/><rect x="1" y="7" width="14" height="2" rx="1"/><rect x="1" y="12" width="14" height="2" rx="1"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="sessions-section" id="list-ativas-wrap" style="padding:0;"><div class="cards-grid" id="list-ativas"><div class="empty-sidebar" style="grid-column:1/-1">Carregando…</div></div></div>
       </div>
 
       <!-- Sub-painel: Histórico -->
-      <div class="sub-panel sessions-section" id="sub-historico">
-        <div class="hist-date-row" style="padding:12px 24px 0; margin:0;">
+      <div class="sub-panel" id="sub-historico" style="flex-direction:column;overflow:hidden;min-height:0;">
+        <div class="hist-date-row" style="padding:10px 14px 0; margin:0; flex-shrink:0;">
           <span class="hist-date-label">Data</span>
           <input type="date" class="hist-date-input" id="hist-date" onchange="onDateChange(this.value)">
           <button class="hist-date-today" onclick="setToday()">Hoje</button>
         </div>
-        <div id="list-historico" style="padding:0 0 8px;"><div class="empty-sidebar">Carregando…</div></div>
-        <div style="padding:0 24px 16px;">
-          <button class="btn-apagar-hist" id="btn-apagar-hist" onclick="showDeleteModal()">Apagar histórico do dia</button>
+        <div class="monitor-toolbar" style="margin-top:6px;">
+          <span class="monitor-toolbar-label">Registros</span>
+          <div class="view-toggle">
+            <button class="view-toggle-btn active" id="vt-grid-hist" onclick="setView('hist','grid',this)" title="Grade">
+              <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+            </button>
+            <button class="view-toggle-btn" id="vt-list-hist" onclick="setView('hist','list',this)" title="Lista">
+              <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="2" rx="1"/><rect x="1" y="7" width="14" height="2" rx="1"/><rect x="1" y="12" width="14" height="2" rx="1"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="sessions-section" id="list-historico-wrap" style="padding:0;">
+          <div class="cards-grid" id="list-historico"><div class="empty-sidebar" style="grid-column:1/-1">Carregando…</div></div>
+          <div style="padding:0 12px 16px;">
+            <button class="btn-apagar-hist" id="btn-apagar-hist" onclick="showDeleteModal()">Apagar histórico do dia</button>
+          </div>
         </div>
       </div>
 
@@ -1102,8 +1155,21 @@ const TZ           = 'America/Sao_Paulo';
 let cfgVel = 20;   // km/h para alerta
 
 // ── Abas da sidebar desktop ──
+// Estado de view (grade/lista) por seção
+const viewState = { ativas: 'grid', hist: 'grid' };
+let _lastAtivas = [], _lastHistorico = [];
+
+function setView(section, mode) {
+  viewState[section] = mode;
+  const isAtivas = section === 'ativas';
+  document.getElementById(isAtivas ? 'vt-grid-ativas' : 'vt-grid-hist')?.classList.toggle('active', mode === 'grid');
+  document.getElementById(isAtivas ? 'vt-list-ativas' : 'vt-list-hist')?.classList.toggle('active', mode === 'list');
+  if (isAtivas) renderSessionList(['list-ativas'], _lastAtivas, true);
+  else renderSessionList(['list-historico'], _lastHistorico, false);
+}
+
 function switchSidebarTab(tab) {
-  ['painel','relatorio','config'].forEach(t => {
+  ['painel','monitorar','relatorio','config'].forEach(t => {
     document.getElementById(`stab-${t}`)?.classList.toggle('active', t === tab);
     document.getElementById(`spanel-${t}`)?.classList.toggle('active', t === tab);
   });
@@ -1123,20 +1189,23 @@ function switchSubTab(tab) {
 
 // ── Drag resize da sidebar ──
 (function() {
-  const handle = document.getElementById('sidebar-drag');
-  if (!handle) return;
   const layout  = document.querySelector('.layout');
   const sidebar = document.querySelector('.sidebar');
-  let dragging  = false, startX, startW;
+  if (!layout || !sidebar) return;
   const MIN_W = 280;
   const getMaxW = () => Math.floor(window.innerWidth * 0.70);
+  let dragging = false, startX, startW, activeHandle = null;
 
-  handle.addEventListener('mousedown', e => {
-    dragging = true; startX = e.clientX; startW = sidebar.offsetWidth;
-    handle.classList.add('dragging');
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    e.preventDefault();
+  ['sidebar-drag','sidebar-drag-mon'].forEach(hid => {
+    const handle = document.getElementById(hid);
+    if (!handle) return;
+    handle.addEventListener('mousedown', e => {
+      dragging = true; startX = e.clientX; startW = sidebar.offsetWidth; activeHandle = handle;
+      handle.classList.add('dragging');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
   });
   document.addEventListener('mousemove', e => {
     if (!dragging) return;
@@ -1147,7 +1216,8 @@ function switchSubTab(tab) {
   document.addEventListener('mouseup', () => {
     if (!dragging) return;
     dragging = false;
-    handle.classList.remove('dragging');
+    activeHandle?.classList.remove('dragging');
+    activeHandle = null;
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
     map && map.invalidateSize();
@@ -1945,17 +2015,23 @@ function renderSidebar(ativas, historico) {
   setEl('m-update', fmtNow().slice(0,5));
 
   const cntA = ativas.length;
-  ['badge-ativas','p-badge-ativas'].forEach(id => { const el=document.getElementById(id); if(el){el.textContent=cntA;el.style.display=cntA>0?'inline':'none';} });
+  ['p-badge-ativas'].forEach(id => { const el=document.getElementById(id); if(el){el.textContent=cntA;el.style.display=cntA>0?'inline':'none';} });
   ['bn-badge-ativas','tb-badge-ativas'].forEach(id => { const el=document.getElementById(id); if(el){el.textContent=cntA;el.classList.toggle('show',cntA>0);} });
-  // Badge da sub-aba
+  // Badge sub-aba e aba Monitorar
   const subBadge = document.getElementById('sub-badge-ativos');
   if (subBadge) { subBadge.textContent=cntA; subBadge.style.display=cntA>0?'inline':'none'; }
+  const monBadge = document.getElementById('badge-mon');
+  if (monBadge) { monBadge.textContent=cntA; monBadge.style.display=cntA>0?'inline':'none'; }
 
-  // Ativos
+  // Salva cache para re-renderização ao trocar view
+  _lastAtivas = ativas;
+
+  // Ativos — usa view state (grade ou lista)
   renderSessionList(['list-ativas','d-list-ativas','p-list-ativas'], ativas, true);
 
   // Histórico (só se passado)
   if (historico !== null) {
+    _lastHistorico = historico;
     renderSessionList(['list-historico','d-list-historico','p-list-historico'], historico, false);
     const show = historico.length > 0;
     ['btn-apagar-hist','d-btn-apagar-hist','p-btn-apagar-hist'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display=show?'block':'none'; });
@@ -1966,8 +2042,15 @@ function renderSessionList(ids, sessions, isActive) {
   ids.forEach(containerId => {
     const el = document.getElementById(containerId);
     if (!el) return;
+    // Aplica classe de grade conforme viewState
+    const section = isActive ? 'ativas' : 'hist';
+    const isGrid = viewState[section] === 'grid';
+    if (containerId === 'list-ativas' || containerId === 'list-historico') {
+      el.className = isGrid ? 'cards-grid' : '';
+    }
     if (!sessions.length) {
-      el.innerHTML = `<div class="empty-sidebar">${isActive?'Nenhum prestador ativo':'Nenhuma visita encerrada'}</div>`;
+      const emptyStyle = isGrid ? ' style="grid-column:1/-1"' : '';
+      el.innerHTML = `<div class="empty-sidebar"${emptyStyle}>${isActive?'Nenhum prestador ativo':'Nenhuma visita encerrada'}</div>`;
       return;
     }
     sessions.forEach(s => {
